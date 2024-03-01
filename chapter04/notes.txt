@@ -24,7 +24,19 @@ Header guard: constructed in C and C++ to prevent multiple inclusion. Example
 #endif /* COMMON_HDRS_H */
 --------------------------------------------------------------------------
 
-Research for out first system program
+Extract numbers by using get_nums.h, where it extract the numeric values of string data. Some example include get_long() and get_int().
+
+Some possible flags include
+- NO_TRAILING   : return a TRAILING_CHARS_FOUND value of digits if founded
+- NON_NEG_ONLY  : return NEG_NUM_FOUND if the numeric value is negative
+- ONLY_DIGITS   : return NO_DIGITS_FOUND if string has no digits and set *value to zero.
+Because they are independent, they can be or-ed into flag to pass to the function
+--------------------------------------------------------------------------
+  int flag = 0;
+  flag = flag | NO_TRAILING | ONLY_DIGITS;
+--------------------------------------------------------------------------
+
+
 
 
 

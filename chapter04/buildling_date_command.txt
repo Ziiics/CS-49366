@@ -1,0 +1,82 @@
+--------------------------------------------------------------------------------                                Version 1
+--------------------------------------------------------------------------------
+
+
+Find the keywords to find the date and time
+-----------------------------------------------------------
+$ apropos -s1 date      // for exact, add option -e
+$ date                  // prints current date, time and day
+$ date -d'next Thu'     // option -d can be added string input
+$ date -d'5 years ago'
+$ date +"%A, %D"     // locale's date and time
+$ date +"It is %A at &R."   // full day name, 24-hour time
+-----------------------------------------------------------
+
+Unix have 2 types of time
+- Process time: time a process spends in the CPU
+- Real time: from some reference point
+    Calender time is real time with respect to epoch defined as Jan 1, 1970
+    UTC is shot for Coordinated Universal Time
+
+Broken down time consolidates all the information of time into a single data structure called struct tm.
+-----------------------------------------------------------
+struct tm {
+    int tm_sec;     /* Seconds (0-60) */
+    int tm_min;     /* Minutes (0-59) */
+    int tm_hour;    /* Hours (0-23) */
+    int tm_mday;    /* Day of the month (1-31) */
+    int tm_mon;     /* Month (0-11) */
+    int tm_year;    /* Year - 1900 */
+    int tm_wday;    /* Day of the week (0-6, Sunday = 0) */
+    int tm_yday;    /* Day in the year (0-365, 1 Jan = 0) */
+    int tm_isdst;   /* Daylight saving time */
+};
+-----------------------------------------------------------
+
+The time(7) man page suggests two different sycall to get calender time
+- clock_gettime(): provide time clock in nanoseconds, use struct timespec
+- time(): returns the number of seconds since the Epoch, use time_t
+But because our program don't need sub-second granularity, we can use the time()
+
+* Whenever a feature is marked perecated in documnetation, avoid using it
+
+
+
+Time conversion function
+
+The functions asctime, ctime, gmtime, localtime, mktimeare all described ont he same man page
+They transform date and time to broken-down time or ASCII
+-----------------------------------------------------------
+#include <time.h>
+  char *asctime(const struct tm *tm);     // take broken-down time struct, return string
+  char *ctime(const time_t *timep);       // take time_t value, returns a string
+  struct tm *gmtime(const time_t *timep); // take time_t, return a pointer to a broken-down time struct
+  struct tm *localtime(const time_t *timep);
+  time_t mktime(struct tm *tm);
+-----------------------------------------------------------
+
+
+
+
+
+
+
+
+
+-----------------------------------------------------------
+-----------------------------------------------------------
+-----------------------------------------------------------
+--------------------------------------------------------------------------------                                Version 2
+--------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------                                Version 3
+--------------------------------------------------------------------------------
