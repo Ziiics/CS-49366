@@ -1,5 +1,8 @@
 --------------------------------------------------------------------------------                                Version 1
 --------------------------------------------------------------------------------
+1. Get current time
+2. Format the time in tha default form of the dte command, store to string
+3. print the string on standard output
 
 
 Find the keywords to find the date and time
@@ -50,11 +53,12 @@ They transform date and time to broken-down time or ASCII
 #include <time.h>
   char *asctime(const struct tm *tm);     // take broken-down time struct, return string
   char *ctime(const time_t *timep);       // take time_t value, returns a string
-  struct tm *gmtime(const time_t *timep); // take time_t, return a pointer to a broken-down time struct
-  struct tm *localtime(const time_t *timep);
+  struct tm *gmtime(const time_t *timep); // both take time_t, return a pointer
+  struct tm *localtime(const time_t *timep); // to a broken-down time struct
   time_t mktime(struct tm *tm);
 -----------------------------------------------------------
 
+With these, we have now build the spl_date1.c
 
 
 
@@ -63,20 +67,51 @@ They transform date and time to broken-down time or ASCII
 
 
 
------------------------------------------------------------
------------------------------------------------------------
------------------------------------------------------------
+
 --------------------------------------------------------------------------------                                Version 2
 --------------------------------------------------------------------------------
+Now, we will add variable to make it usable different date formats from command lines.
+
+As example is 
+-----------------------------------------------------------
+$ spl_date +"Today is %A. Current time: %R"
+Today is Sunday. Current time: 13:45
+-----------------------------------------------------------
+
+With this, what we need is
+- a variable to store a format string
+- instead of calling strftime() witih teh hard-coded format, we will do
+-----------------------------------------------------------
+strftime(formatted_date, sizeof(formatted_date), format_str, broken_down_time)
+-----------------------------------------------------------
+
+We have to check if the user give arguments for the option, the logic as below
+-----------------------------------------------------------
+if (argc < 2) 
+  strcpy(format_str, FORMAT);
+else {
+  if (argv[1][0] == '+') 
+    if (strlen(argv[1]+1) < MAXLEN)
+      strcpy(fprmat_str, argv[1]+1, MAXLEN-1);
+    else {
+      fprint(stderr, "%s: format string length is too long\n", basename(argv[0]));
+      exit(EXIT_FAILURE);
+    } else {
+      fprint(stderr, "%s: fromat should be +\"format-string\"\n", basename(argv[0]));
+      exit(EXIT_FAILURE);
+    }
+}
+-----------------------------------------------------------
+
+With these, we have now build the spl_date2.c
 
 
 
 
 
 
-
-
-
+-----------------------------------------------------------
+-----------------------------------------------------------
 
 --------------------------------------------------------------------------------                                Version 3
 --------------------------------------------------------------------------------
