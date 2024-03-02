@@ -1,0 +1,16 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     day3
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _get_int, symObjAddr: 0x0, symBinAddr: 0x100002EB8, symSize: 0xDC }
+  - { offsetInCU: 0x69, offset: 0x69, size: 0x8, addend: 0x0, symName: _get_int, symObjAddr: 0x0, symBinAddr: 0x100002EB8, symSize: 0xDC }
+  - { offsetInCU: 0xD7, offset: 0xD7, size: 0x8, addend: 0x0, symName: _parse_time_adjustment, symObjAddr: 0xDC, symBinAddr: 0x100002F94, symSize: 0x300 }
+  - { offsetInCU: 0x161, offset: 0x161, size: 0x8, addend: 0x0, symName: _update_time, symObjAddr: 0x3DC, symBinAddr: 0x100003294, symSize: 0xF0 }
+  - { offsetInCU: 0x197, offset: 0x197, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x4CC, symBinAddr: 0x100003384, symSize: 0x4D4 }
+  - { offsetInCU: 0x26, offset: 0x384, size: 0x8, addend: 0x0, symName: _get_long, symObjAddr: 0x0, symBinAddr: 0x100003858, symSize: 0x2D8 }
+  - { offsetInCU: 0x41, offset: 0x39F, size: 0x8, addend: 0x0, symName: _get_long, symObjAddr: 0x0, symBinAddr: 0x100003858, symSize: 0x2D8 }
+  - { offsetInCU: 0x26, offset: 0x44B, size: 0x8, addend: 0x0, symName: _error_mssge, symObjAddr: 0x0, symBinAddr: 0x100003B30, symSize: 0x94 }
+  - { offsetInCU: 0x41, offset: 0x466, size: 0x8, addend: 0x0, symName: _error_mssge, symObjAddr: 0x0, symBinAddr: 0x100003B30, symSize: 0x94 }
+  - { offsetInCU: 0x73, offset: 0x498, size: 0x8, addend: 0x0, symName: _fatal_error, symObjAddr: 0x94, symBinAddr: 0x100003BC4, symSize: 0x28 }
+  - { offsetInCU: 0xA5, offset: 0x4CA, size: 0x8, addend: 0x0, symName: _usage_error, symObjAddr: 0xBC, symBinAddr: 0x100003BEC, symSize: 0x3C }
+...

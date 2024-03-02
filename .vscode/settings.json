@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "errno.h": "c"
+      "errno.h": "c",
+      "stdlib.h": "c",
+      "common_hdrs.h": "c",
+      "time.h": "c"
     }
 }
