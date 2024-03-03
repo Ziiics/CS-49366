@@ -205,11 +205,7 @@ int main(int argc, char *argv[])
     free(d_arg); /* Allocated in option handling above. */
   }
 
-  printf("Debug - Format string: '%s'\n", format_string);
-  printf("Debug - Adjusted Time: %04d-%02d-%02d %02d:%02d:%02d\n",
-       bdtime->tm_year + 1900, bdtime->tm_mon + 1, bdtime->tm_mday,
-       bdtime->tm_hour, bdtime->tm_min, bdtime->tm_sec);
-
+  
   /* Create a string from the broken down time using the %c format.       */
   if (0 == strftime(formatted_date, sizeof(formatted_date),
                     format_string, bdtime))
