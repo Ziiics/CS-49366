@@ -66,20 +66,15 @@ int parse_time_adjustment(char *datestring, struct tm *datetm)
   /* Initialize strtok() and set token to first word in string.           */
   token = strtok(datestring, delim);
 
-  /* Processing ends if strtok() returns a NULL pointer. */
   while (token != NULL)
   {
-    /* Expecting an integer */
     res = get_int(token, flags, &number, err_msg);
     if (VALID_NUMBER != res)
       fatal_error(res, err_msg);
 
-    /* num is quantity of time-adjustment unit to be found next
-       get next token in time adjustment, should be a time unit.        */
     token = strtok(NULL, delim);
     if (token == NULL)
     {
-      /* end of string encountered without the time unit*/
       fatal_error(TIME_ADJUST_ERROR, "missing a time unit\n");
     }
 

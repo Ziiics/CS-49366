@@ -1,130 +1,108 @@
-#include <stdio.h>
-#include <time.h>
-#include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <ctype.h>
-#define MAXLEN 80
+#include <string.h>
+#include <stdio.h>
+#include <time.h>
 
+typedef struct schedule_t
+{
+    char *key;
+    int value;
+} schedule_t;
 
-/* change the time and date */
-int adjust_time(char *schedule_arg, struct tm *adjusted_time) {
-  
-  char *token;
-  token = strtok(schedule_arg, " ");
-
-
-  while (token != NULL)
-  {
-    printf("%s\n", token);
-    int nums = atoi(token);
-    token = strtok(NULL, " \t");
-
-    if (token == NULL) 
-      printf("Time units required");
-
-    if (strstr(token, "minutes") != NULL)
-      adjusted_time->tm_min += nums;
-    else if (strstr(token, "hour") != NULL)
-      adjusted_time->tm_hour += nums;
-    else if (strstr(token, "day") != NULL)
-      adjusted_time->tm_mday += nums;
-    else if (strstr(token, "week") != NULL)
-      adjusted_time->tm_mday += 7*nums;
-    else if (strstr(token, "month") != NULL)
-      adjusted_time->tm_mon += nums;
-    else if (strstr(token, "year") != NULL)
-      adjusted_time->tm_year += nums;
-
+void add_unix_in_schedule(struct tm *date, int num, char time_unit[])
+{
+    if (strcmp(time_unit, "years") == 0)
+        date->tm_year += num;
+    else if (strcmp(time_unit, "months") == 0)
+        date->tm_mon += num;
+    else if (strcmp(time_unit, "weeks") == 0)
+        date->tm_mday += num * 7;
+    else if (strcmp(time_unit, "days") == 0)
+        date->tm_mday += num;
+    else if (strcmp(time_unit, "hours") == 0)
+        date->tm_hour += num;
+    else if (strcmp(time_unit, "minutes") == 0)
+        date->tm_min += num;
+    else if (strcmp(time_unit, "seconds") == 0)
+        date->tm_sec += num;
     else
     {
-      printf("Found invalid adjust time: %s\n", token);
-      break;
+        printf("Invalid time unit: %s\n", time_unit);
+        return;
     }
-    token = strtok(NULL, " \t");
-  }
-  return 0;
+
+    // Normalize the date
+    mktime(date);
 }
 
-
-
-
-
-
-/* iterate */
-void iterate(struct tm* adjusted_time, int count) {
-  printf("Processsing iterate\n");
-  time_t currentTime = time(NULL);
-  struct tm* timeInfo = localtime(&currentTime);
-
-  printf("can i print?\n");
-
-  for (int i=0; i<count; i++) {
-    char buffer=0;
-
-    timeInfo->tm_min += adjusted_time->tm_min;
-    timeInfo->tm_hour += adjusted_time->tm_hour;
-    timeInfo->tm_mday += adjusted_time->tm_mday;
-    timeInfo->tm_mday += adjusted_time->tm_mday;
-    timeInfo->tm_mon += adjusted_time->tm_mon;
-    timeInfo->tm_year += adjusted_time->tm_year;
-
-    mktime(timeInfo);
-    strftime(&buffer, 80, "%c", timeInfo);
-    printf("%s/n", buffer);
-  }
-}
-
-
-
-
-
-
-
-
-/* main function */
 int main(int argc, char *argv[])
 {
+    // make sure there are even key pair arguments
+    if (argc % 2 == 0)
+    {
+        printf("Invalid arguments");
+        return 1;
+    }
 
-  /* naming */
-  time_t today;
-  struct tm *today_time;
-  char str_format[MAXLEN];
-  char *schedule_updated;
-  bool c_option = false;
-  int ch;
-  char options[] = "c:";
-  int count = 10;
-  struct tm adjusted_time;
-  char *schedule_arg = NULL;
+    schedule_t schedule_list[] = {
+        {"years", 0},
+        {"months", 0},
+        {"weeks", 0},
+        {"days", 0},
+        {"hours", 0},
+        {"minutes", 0}};
 
+    time_t currentTime;
+    struct tm *currentDate;
+    time(&currentTime);
+    currentDate = localtime(&currentTime);
+    time_t epochBefore = mktime(currentDate);
+    time_t t = time(NULL);
+    int schedule_count = 10;
 
-  /* getting current time value */
-  today = time(NULL);
-  today_time = localtime(&today);
-  strftime(str_format, MAXLEN, "%c", today_time);
+    for (int i = 1; i < argc; i += 2)
+    {
+        if (strcmp(argv[i], "-c") == 0)
+        {
+            // set schedule_count
+            schedule_count = atoi(argv[i + 1]);
+        }
+        else
+        {
+            int schedule_amt = atoi(argv[i]);
+            char *schedule_val = argv[i + 1];
+            bool valid_schedule_val = false;
 
+            for (int k = 0; k < sizeof(schedule_list) / sizeof(schedule_list[0]); k++)
+            {
+                // Compare the key with the target string
+                if (strcmp(schedule_list[k].key, schedule_val) == 0)
+                {
+                    valid_schedule_val = true;
+                    break;
+                }
+            }
 
-  /* Check user's command */
-  if (argc < 2)
-    printf("%s: format should be [-c <count>] <schedule>\n", argv[0]);
-  else {
-    if (strcmp(argv[1], "-c") == 0) 
-      count = atoi (argv[2]);
-  }
-  schedule_arg = argv[argc-1];
-  printf("Count: %d, Schedule: %s\n", count, schedule_arg);
+            if (!valid_schedule_val)
+            {
+                printf("Invalid arguments");
+                return 0;
+            }
 
-  /* get value to be adjusted and iterate through it */
-  adjust_time(schedule_arg, schedule_updated);
+            add_unix_in_schedule(currentDate, schedule_amt, schedule_val);
+        }
+    }
 
+    struct tm time_difference;
+    time_t epochAfter = mktime(currentDate);
+    time_difference.tm_sec = difftime(epochAfter, epochBefore);
+    for (int i = 0; i < schedule_count; i++)
+    {
+        printf("%d: %d-%02d-%02d %02d:%02d:%02d\n", i + 1, currentDate->tm_year + 1900, currentDate->tm_mon + 1, currentDate->tm_mday, currentDate->tm_hour, currentDate->tm_min, currentDate->tm_sec);
+        add_unix_in_schedule(currentDate, time_difference.tm_sec, "seconds");
+    }
 
-  /* iterate throught it */
-  iterate(schedule_updated, count);
-
-  /* outputting part */
-  printf("%s\n", str_format);
-  
-  return 0;
+    return 0;
 }

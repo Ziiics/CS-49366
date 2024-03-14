@@ -1,0 +1,13 @@
+Advanced concept of I/O
+
+lseek() is to repositions the file offset.
+off_t lseek(int fd, off_t offset, int whence);
+  - fd: file descriptor 
+  - offset: argument offset according to the directive  
+  - whence: the directive accordance to offset as follow,
+    - SEEK_SET: file offset is set to offset bytes.
+    - SEEK_CUR: is set to its current location plus offset bytes.
+    - SEEK_END: The file offset is set to the size of the file plus offset bytes.
+
+lseek() allows the file offset to be set beyond the end of the file (does not change the size of the file)
+
