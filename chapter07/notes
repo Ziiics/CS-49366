@@ -12,4 +12,9 @@ The job is to talk to the devices and to the kernel.
 - upper half
 - lower half
 
-Most file system stays on the disks
+Most file system stays on the disks.
+We can check the file or memeory on the disks on /proc
+
+The filesystem we are talking about is focussin on the ext file.
+
+The goal is ot implement the stat() command

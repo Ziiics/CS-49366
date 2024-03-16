@@ -1,0 +1,63 @@
+
+File creation mask = umask = the nine bits that restricts which permissions are enabled when the process creates a file.
+  - The permission to read, write, and execute
+------------------------------------------------------------------------
+000   010   010     // 1 means dissable and 0 means able
+rwx   rwx   rwx
+user group others   // this is also called the octal value 022 
+------------------------------------------------------------------------
+
+
+We can see the octal value of umask, we can do
+------------------------------------------------------------------------
+$ umask       // see octal value of permission
+$ umask -S    // shows each group permission with characters
+$ umask 033   // change the umask by giving it a umask
+value argument
+------------------------------------------------------------------------
+Can also be added to the shell configuration files if we want something other than the default value
+------------------------------------------------------------------------
+# Set my umask to turn off group reads; others: no read, no write
+  umask 026
+------------------------------------------------------------------------
+umask value will be inhereted from the shell.
+
+On Linux, every process has four user IDs:
+• A real user ID
+• An effective user ID - determine whether to grant memory acceses permission
+• A saved set-user-id
+• A filesystem user ID, which is Linux-specific - determine user access files == effective user id
+
+
+
+setuid bit
+- Is highest-order bit in a file’s mode.
+- When enabled, it allows a user to execute a program with the permission of another user.
+- Can be checked by checking 
+  ------------------------------------------------------------
+  $ ls -l         // when the user execute permission is s, its enabled 
+    -rwsr-xr-x 1 root root 59976 Nov 24 07:05 passwd
+  ------------------------------------------------------------
+
+File I/O operations in Unix-like systems involve three main steps: opening the file to establish a connection (and obtaining a file descriptor for that connection), performing read/write operations through that connection, and finally, closing the file to properly save data and free up system resources.
+
+Open File Description (OFD) is an object that establish connection between process and file. The OFD contains crucial information for managing the interaction, such as:
+- File Offset (File Pointer): The position in the file where the next read or write operation will occur.
+- Access Modes: Determines how the file can be used (e.g., read-only, write-only, or read/write).
+- File Location Information: Helps the system locate the file on the storage device.
+- Control Flags and Mode Bits: These specify additional options for how operations on the file should be conducted.
+
+To open a file, a process uses an operation that returns a file descriptor. A file descriptor is a small, non-negative integer that acts as a reference to the OFD. 
+- When a process opens a file, it specifies an access mode (Read Mode, Write Mode, Read/Write Mode).
+- POSIX also allows multiple processes to access the same file simultaneously. 
+- Unix systems allow a process to duplicate a file descriptor, meaning that two different descriptors can point to the same OFD.
+
+When a process is done using a file, it must close it. Closing a file:
+- Releases the file descriptor so it can be reused.
+- Ensures data written to the file is actually saved to the storage device. 
+- Frees the resources associated with the OFD if no other descriptors are pointing to it.
+
+When a process is started from a shell, it inherits three open file descriptors
+- File descriptor 0 (standard input) refers to the input receiving connection (STDIN_FILENO).
+- File descriptor 1 (standard output) refers to the sending output connection (STDOUT_FILENO).
+- File descriptor 2 (standard error) refers to the sending error connection (STDERR_FILENO).
