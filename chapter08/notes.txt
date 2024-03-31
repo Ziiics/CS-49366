@@ -1,0 +1,1 @@
+In this chapter, we will explora API related to directories and the direcotry hierarchy.

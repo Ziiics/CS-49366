@@ -6,7 +6,16 @@
       "time.h": "c",
       "string.h": "c",
       "unistd.h": "c",
-      "stdio.h": "c"
+      "stdio.h": "c",
+      "array": "cpp",
+      "string": "cpp",
+      "string_view": "cpp",
+      "vector": "cpp",
+      "hw3": "c",
+      "utmpx.h": "c",
+      "paths.h": "c",
+      "fcntl.h": "c",
+      "stdbool.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

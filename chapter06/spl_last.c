@@ -20,31 +20,33 @@
 *****************************************************************************/
 
 #define _GNU_SOURCE
-#include "../common_hdrs.h"
+#include "common_hdrs.h"
 #include <paths.h>
 #include <utmpx.h>
 
-
-
-/* Some systems define a record type of SHUTDOWN_TIME. If it's not defined define it.  */
+/* Some systems define a record type of SHUTDOWN_TIME. If it's not defined
+   define it.                                                              */
 #ifndef SHUTDOWN_TIME
 #define SHUTDOWN_TIME 32 /* Give it a value larger than the other types */
 #endif
 
-
-
-
 /* Type definition for the linked list of utmpx records. */
-struct utmp_list {
+struct utmp_list
+{
   struct utmpx ut;
   struct utmp_list *next;
   struct utmp_list *prev;
-}; typedef struct utmp_list utlist;
+};
 
-/*  For debugging only, not used in finished program: 
-    print_rec_type prints the string representation of the integer value of utmp type  */
-void print_rec_type(int t) {
-  switch (t) {
+typedef struct utmp_list utlist;
+
+/*  For debugging only, not used in finished program:
+    print_rec_type prints the string representation of the integer value
+    of utmp type  */
+void print_rec_type(int t)
+{
+  switch (t)
+  {
   case RUN_LVL:
     printf("RUN_LVL       ");
     break;
@@ -75,10 +77,6 @@ void print_rec_type(int t) {
   }
 }
 
-
-
-
-
 /** get_prev_utrec(fd, ut, done)
     get_prev_utrec(fd, ut) reads one utmpx structure from the current file
     offset  into the address ut and repositions the file offset so that
@@ -88,43 +86,55 @@ void print_rec_type(int t) {
     If it returns 0, it sets *done to true when it has read the first record
     in the file.
 */
-int get_prev_utrec(int fd, struct utmpx *ut, BOOL *finished) {
+int get_prev_utrec(int fd, struct utmpx *ut, BOOL *finished)
+{
   static off_t saved_offset;            /* Where this call is about to read    */
   static BOOL is_first = TRUE;          /* Whether this is first time called   */
   size_t utsize = sizeof(struct utmpx); /* Size of utmpx struct */
   ssize_t nbytes_read;                  /* Number of bytes read                */
 
   /* Check if this is the first time it is called.
-     If so, move the file offset to the last record in the file and save it in saved_offset. */
-  if (is_first) {
+     If so, move the file offset to the last record in the file
+     and save it in saved_offset. */
+  if (is_first)
+  {
     errno = 0;
     /* Move to utsize bytes before end of file. */
     saved_offset = lseek(fd, -utsize, SEEK_END);
-    if (-1 == saved_offset) {
+    if (-1 == saved_offset)
+    {
       error_mssge(1, "error trying to move offset to last rec of file");
       return FALSE;
-    } is_first = FALSE; /* Turn off flag. */
+    }
+    is_first = FALSE; /* Turn off flag. */
   }
 
   *finished = FALSE; /* Assume we're not done yet. */
-  if (saved_offset < 0) {
+  if (saved_offset < 0)
+  {
     *finished = TRUE; /* saved_offset < 0 implies we've read entire file. */
     return FALSE;     /* Return 0 to indicate no read took place.         */
   }
   /* File offset is at the correct place to read. */
   errno = 0;
   nbytes_read = read(fd, ut, utsize);
-  if (-1 == nbytes_read) {
+  if (-1 == nbytes_read)
+  {
     /* read() error occurred; do not exit - let main() do that. */
     error_mssge(errno, "read");
     return FALSE;
-  } else if (nbytes_read < utsize) {
+  }
+  else if (nbytes_read < utsize)
+  {
     /* Full utmpx struct not read; do not exit - let main() do that. */
     error_mssge(2, "less than full record read");
     return FALSE;
-  } else {                                       /* Successful read of utmpx record */
+  }
+  else
+  {                                       /* Successful read of utmpx record */
     saved_offset = saved_offset - utsize; /* Reposition saved_offset. */
-    if (saved_offset >= 0) {
+    if (saved_offset >= 0)
+    {
       /* Seek to preceding record to set up next read. */
       errno = 0;
       if (-1 == lseek(fd, -(2 * utsize), SEEK_CUR))
@@ -133,11 +143,6 @@ int get_prev_utrec(int fd, struct utmpx *ut, BOOL *finished) {
     return TRUE;
   }
 }
-
-
-
-
-
 
 /** format_time_diff(start, finish, str)
     creates a string representing the number of seconds from start to
@@ -158,16 +163,11 @@ void format_time_diff(time_t start_time, time_t end_time, char *time_diff_str)
   days = secs / 86400;
 
   /* If days > 0 then use a different format. */
-  if (days >= 0)
+  if (days > 0)
     sprintf(time_diff_str, "(%d+%02d:%02d)", days, hours, minutes);
   else
     sprintf(time_diff_str, "(%02d:%02d)", hours, minutes);
 }
-
-
-
-
-
 
 /**
     print_one_line(u,t) prints one line of output representing
@@ -221,11 +221,8 @@ void print_one_line(struct utmpx *ut, time_t end_time)
          ut->ut_host, formatted_login, formatted_logout, duration);
 }
 
-
-
-
-
-void save_ut_to_list(struct utmpx *ut, utlist **list) {
+void save_ut_to_list(struct utmpx *ut, utlist **list)
+{
   utlist *utmp_node_ptr;
 
   /* Allocate a new list node. */
@@ -239,24 +236,22 @@ void save_ut_to_list(struct utmpx *ut, utlist **list) {
   /* Attached the node to the front of the list. */
   utmp_node_ptr->next = *list;
   utmp_node_ptr->prev = NULL;
-  if (NULL != *list) (*list)->prev = utmp_node_ptr;
+  if (NULL != *list)
+    (*list)->prev = utmp_node_ptr;
   (*list) = utmp_node_ptr;
 }
 
+void delete_utnode(utlist *p, utlist **list)
+{
+  if (NULL != p->next)
+    p->next->prev = p->prev;
 
-
-
-
-void delete_utnode(utlist *p, utlist **list) {
-  if (NULL != p->next) p->next->prev = p->prev;
-  if (NULL != p->prev) p->prev->next = p->next;
-  else *list = p->next;
+  if (NULL != p->prev)
+    p->prev->next = p->next;
+  else
+    *list = p->next;
   free(p);
 }
-
-
-
-
 
 void erase_utlist(utlist **list)
 {
@@ -271,17 +266,6 @@ void erase_utlist(utlist **list)
   }
   *list = NULL;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 int main(int argc, char *argv[])
 {
@@ -324,7 +308,6 @@ int main(int argc, char *argv[])
     case 'x':
       show_sys_events = TRUE;
       break;
-
     case '?':
     case ':':
       fprintf(stderr, "Found invalid option %c\n", optopt);
@@ -354,7 +337,7 @@ int main(int argc, char *argv[])
     if (get_prev_utrec(fd_utmp, &utmp_entry, &done))
     {
       /*
-       What type of record is this?
+         What type of record is this?
          For ordinary user logins, the ut_type field will be USER_PROCESS
          but for shutdown events, there is no SHUTDOWN_TIME.
          We can identify a shutdown record by the line being ~ and
@@ -414,7 +397,7 @@ int main(int argc, char *argv[])
              logged in.
              If the system was shut down at any time after this login,
              the user cannot still be logged into the same session.
-                                   If there is no saved logout record, it implies that
+             If there is no saved logout record, it implies that
              the session ended in an abnormal way and the output
              should just indicate the user is "gone".
            */

@@ -1,108 +1,156 @@
-#include <stdbool.h>
-#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <utmp.h>
+#include <errno.h>
 #include <time.h>
 
-typedef struct schedule_t
-{
-    char *key;
-    int value;
-} schedule_t;
+#define WTMPX_FILE "/var/log/wtmp"
 
-void add_unix_in_schedule(struct tm *date, int num, char time_unit[])
+struct 
+
+struct session_time
 {
-    if (strcmp(time_unit, "years") == 0)
-        date->tm_year += num;
-    else if (strcmp(time_unit, "months") == 0)
-        date->tm_mon += num;
-    else if (strcmp(time_unit, "weeks") == 0)
-        date->tm_mday += num * 7;
-    else if (strcmp(time_unit, "days") == 0)
-        date->tm_mday += num;
-    else if (strcmp(time_unit, "hours") == 0)
-        date->tm_hour += num;
-    else if (strcmp(time_unit, "minutes") == 0)
-        date->tm_min += num;
-    else if (strcmp(time_unit, "seconds") == 0)
-        date->tm_sec += num;
-    else
+  long login_time;
+  long logout_time; // If 0, session might be open
+  struct session_time *next;
+};
+
+struct user_session
+{
+  char user[32]; // Adjust based on UT_NAMESIZE
+  struct session_time *sessions;
+  struct user_session *next;
+};
+
+struct user_session *sessions = NULL;
+
+struct user_session *find_or_create_user(const char *user)
+{
+  struct user_session *current = sessions;
+  while (current)
+  {
+    if (strcmp(current->user, user) == 0)
     {
-        printf("Invalid time unit: %s\n", time_unit);
-        return;
+      return current;
     }
-
-    // Normalize the date
-    mktime(date);
+    current = current->next;
+  }
+  struct user_session *new_user = malloc(sizeof(struct user_session));
+  strncpy(new_user->user, user, sizeof(new_user->user) - 1);
+  new_user->user[sizeof(new_user->user) - 1] = '\0';
+  new_user->sessions = NULL;
+  new_user->next = sessions;
+  sessions = new_user;
+  return new_user;
 }
 
-int main(int argc, char *argv[])
+void add_session_time(struct user_session *user, long time, int is_login)
 {
-    // make sure there are even key pair arguments
-    if (argc % 2 == 0)
-    {
-        printf("Invalid arguments");
-        return 1;
+  if (is_login)
+  {
+    struct session_time *new_session = malloc(sizeof(struct session_time));
+    new_session->login_time = time;
+    new_session->logout_time = 0; // Open session
+    new_session->next = user->sessions;
+    user->sessions = new_session;
+  }
+  else
+  { // Handle as logout
+    if (user->sessions && user->sessions->logout_time == 0)
+    { // Update the most recent session if logout is missing
+      user->sessions->logout_time = time;
     }
+  }
+}
 
-    schedule_t schedule_list[] = {
-        {"years", 0},
-        {"months", 0},
-        {"weeks", 0},
-        {"days", 0},
-        {"hours", 0},
-        {"minutes", 0}};
+void close_open_sessions(long time)
+{
+  struct user_session *user = sessions;
+  while (user)
+  {
+    if (user->sessions && user->sessions->logout_time == 0)
+    { // Close open session
+      user->sessions->logout_time = time;
+    }
+    user = user->next;
+  }
+}
 
-    time_t currentTime;
-    struct tm *currentDate;
-    time(&currentTime);
-    currentDate = localtime(&currentTime);
-    time_t epochBefore = mktime(currentDate);
-    time_t t = time(NULL);
-    int schedule_count = 10;
+void process_wtmp()
+{
+  int fd = open(WTMPX_FILE, O_RDONLY);
+  if (fd == -1)
+  {
+    perror("Failed to open wtmp file");
+    exit(EXIT_FAILURE);
+  }
 
-    for (int i = 1; i < argc; i += 2)
+  struct utmp ut;
+  ssize_t bytesRead;
+
+  while ((bytesRead = read(fd, &ut, sizeof(ut))) > 0)
+  {
+    if (ut.ut_type == USER_PROCESS)
     {
-        if (strcmp(argv[i], "-c") == 0)
+      printf("This is a login: %-12s %d\n", ut.ut_name, ut.ut_tv.tv_sec);
+      struct user_session *user = find_or_create_user(ut.ut_user);
+      add_session_time(user, ut.ut_tv.tv_sec, 1);
+    }
+    else if (ut.ut_type == DEAD_PROCESS)
+    {
+      printf("This is a lgOut: %-12s %d\n", ut.ut_name, ut.ut_tv.tv_sec);
+      struct user_session *user = find_or_create_user(ut.ut_user);
+      add_session_time(user, ut.ut_tv.tv_sec, 0);
+    }
+    else
+    {
+      printf("Unknown yet atm: %-12s %d\n", ut.ut_name, ut.ut_type);
+      close_open_sessions(ut.ut_tv.tv_sec);
+    }
+  }
+
+  if (bytesRead == -1)
+  {
+    perror("Error reading wtmp file");
+  }
+
+  close(fd);
+}
+
+void print_sessions()
+{
+  struct user_session *user = sessions;
+  while (user)
+  {
+    printf("User: %s\n", user->user);
+    struct session_time *session = user->sessions;
+    while (session)
+    {
+      if (session->login_time > 0)
+      {
+        printf("\tSession: Login at %ld", session->login_time);
+        if (session->logout_time > 0)
         {
-            // set schedule_count
-            schedule_count = atoi(argv[i + 1]);
+          printf(", Logout at %ld, Duration: %ld seconds\n",
+                 session->logout_time, session->logout_time - session->login_time);
         }
         else
         {
-            int schedule_amt = atoi(argv[i]);
-            char *schedule_val = argv[i + 1];
-            bool valid_schedule_val = false;
-
-            for (int k = 0; k < sizeof(schedule_list) / sizeof(schedule_list[0]); k++)
-            {
-                // Compare the key with the target string
-                if (strcmp(schedule_list[k].key, schedule_val) == 0)
-                {
-                    valid_schedule_val = true;
-                    break;
-                }
-            }
-
-            if (!valid_schedule_val)
-            {
-                printf("Invalid arguments");
-                return 0;
-            }
-
-            add_unix_in_schedule(currentDate, schedule_amt, schedule_val);
+          printf(" (Logout missing)\n");
         }
+      }
+      session = session->next;
     }
+    user = user->next;
+  }
+}
 
-    struct tm time_difference;
-    time_t epochAfter = mktime(currentDate);
-    time_difference.tm_sec = difftime(epochAfter, epochBefore);
-    for (int i = 0; i < schedule_count; i++)
-    {
-        printf("%d: %d-%02d-%02d %02d:%02d:%02d\n", i + 1, currentDate->tm_year + 1900, currentDate->tm_mon + 1, currentDate->tm_mday, currentDate->tm_hour, currentDate->tm_min, currentDate->tm_sec);
-        add_unix_in_schedule(currentDate, time_difference.tm_sec, "seconds");
-    }
-
-    return 0;
+int main()
+{
+  process_wtmp();
+  print_sessions();
+  return 0;
 }
