@@ -1,0 +1,505 @@
+// I didn't do showdate3.c and showdate4.c
+
+/*
+Man Pages
+       1   Executable programs or shell commands, command line tools
+                man, vim, more, less, apropos
+       2   System calls (functions provided by the kernel), written in C code
+                gethostname, EFAULT, EINVAL, ENAMETOOLONG
+       3   Library calls (functions within program libraries), built from system calls
+                basename, strcpy, strncpy, gnu_get_libc_version, getopt
+       4   Special files (usually found in /dev)
+       5   File formats and conventions, e.g. /etc/passwd
+       6   Games
+       7   Miscellaneous (including macro packages and conven‐
+           tions), e.g. man(7), groff(7), man-pages(7)
+       8   System  administration  commands  (usually only for
+           root)
+       9   Kernel routines [Non standard]
+
+man will search in the order of the sections and only display the first
+one even if there are more pages in later sections
+*/
+
+/*
+SECTION 2
+time_t time(time_t *tloc);
+    Returns time_t as number of seconds since Epoc Jan 1, 1970
+    time(NULL) => current time
+
+SECTION 3
+char *setlocale(int category, const char *locale);
+    Used to set or query the program's current locale
+    If locale is not NULL, the program's current locale is modified according to the
+    arguments. The arguments caregory determines which part of the program's locale should 
+    be modified
+    Category: LC_ALL (All of the locale), LC_ADDRESS (formatting of adresses), LC_TIME, (formatting 
+    of date and time values), etc.
+    If locale is "", each part of the locale is modified.
+    If locale is NULL, the current locale is only queried, not modifed.
+    Portability: have to use setlocale(LC_ALL, "");
+    Returns an address to your locale or NULL if it did not do it
+
+char *nl_langinfo(nl_item item);
+    Access locale info. Returns a string that corresponds to items in the program's current global locale
+    langinfo defines nl_item (int) such as DAYS_{1-7} which return the name of the n-th day of the week
+
+char *strdup(const char *s);
+    Returns a pointer to a new string which is a duplicate of the string s but it is dynamically
+    allocated by strdup so when you're done, you have to use free(___);
+
+double atof(const char *nptr);
+    Converts and returns initial portion of the string pointed to by nptr to double. Same as strtod(nptr, NULL);
+
+ ssize_t strfmon(char *s, size_t max, const char *format, ...);
+    Formats the specificed monetary amount according to the current locale and format and places into the array s
+
+locale_t object is supposed to be opaque so you should not see its data members
+
+locale_t newlocale(int category_mask, const char *locale, locale_t base);
+    Creates a new locale object or modifies an exisiting object and returns a reference to the object. The 
+    category_mask is a bit mask that says which categories will be set in the newly created locale or exisiting 
+    locale. The char* locale is just a string of the new locale like ja_JP.utf8. If the base is (locale_t) 0, 
+    a new object is created. If base refers to an exisiting locale object,  then that object is 
+    modified. Returns the locale data or (locale_t) 0 for an error and sets errno
+
+locale_t uselocale(locale_t newloc);
+    Since glibc 2.10: _XOPEN_SOURCE >= 700
+    Sets the current lcoale to newloc which was created using newlocale()
+    If you did uselocale( (locale_t)0 ), the current locale would be unchanged
+    Returns the locale handle that was set by the previous call to uselocale() or
+    LC_GLOBAL_LOCALE if there was no previous call. If there's an error, it returns (locale_t) 0
+    and sets errno
+
+void freelocale(locale_t locobj);
+    Deallocates the resources associated with locobj, and remember locobj had to be returned by newlocale
+
+struct tm *localtime(const time_t *timep);
+    Takes in time_t paramter and returns a tm struct which represents the elapsed time since Epoch
+    If error, struct tm == NULL
+
+struct tm {
+    int tm_sec;    // Seconds (0-60) 
+    int tm_min;    // Minutes (0-59) 
+    int tm_hour;   // Hours (0-23) 
+    int tm_mday;   // Day of the month (1-31) 
+    int tm_mon;    // Month (0-11) 
+    int tm_year;   // Year - 1900 
+    int tm_wday;   // Day of the week (0-6, Sunday = 0) 
+    int tm_yday;   // Day in the year (0-365, 1 Jan = 0) 
+    int tm_isdst;  // Daylight saving time 
+};
+
+time_t mktime(struct tm *tm);
+    Takes tm structure and converts to number of seconds since Epoch as time_t
+    Error: returns (time_t) -1. The remaining functions return NULL on error 
+    and set errno
+
+size_t strftime(char *s, size_t max, const char *format, const struct tm *tm);
+    Converts struct tm to formatted date and time and places in s which has size of max
+    Returns number of bytes (letters) placed into s. If the length exceeds max bytes,
+    returns 0. Does not set errno
+    %Y-%m-%d %H:%M:%S
+    YYYY-MM-DD HH:MM:SS
+    Ex.                 time (time_t) -> localtime (struct tm) -> strftime (formatted date)
+      ctime (formatted date) <- mktime (time_t) <- (struct tm)
+
+char *ctime(const time_t *timep);
+char *ctime_r(const time_t *timep, char *buf);
+    Takes in time_t and returns a formated version of the time as a string
+    Ex. mktime converts struct tm into time_t and ctime converts time_t into 
+    formatted string
+
+There are two ways of printing a formatted date from time: strftime (struct tm) or c
+time (time_t)
+
+int strcoll(const char *s1, const char *s2);
+    Compares two strings s1 and s2. Returns an integer less than or equal to or greater than 0
+    if s1 is found, respectively, to be less than to math, or be greater than s2. Comparison of
+    strings are based on current locale for category LC_COLLATE
+*/
+
+/******************************************************************************/
+
+// langinfo_demo.c
+// Displays names of days of the week in current locale
+// Usage: LC_TIME=<locale-name> langinfo_demo
+// LC_TIME Examples: el_GR.utf8, en_US.utf8, es_ES.utf8, hu_HU.utf8, ja_JP.utf8
+
+#define _GNU_SOURCE
+#include <locale.h>         // setlocale (3)
+#include <langinfo.h>       // nl_langinfo (3)
+#include <stdio.h>          // fprintf (3)
+#include <stddef.h>
+#include <stdlib.h>         // exit (3)
+
+#define LOCALE_ERROR 1
+
+void fatal_error(int code, const char *message) {
+    fprintf(stderr, "Error %d: %s\n", code, message);
+    exit(EXIT_FAILURE);
+}
+
+int main(int argc, char *argv[]) {
+    char *mylocale;
+    if ((mylocale = setlocale(LC_TIME, "")) == NULL)
+        fatal_error(LOCALE_ERROR, "setlocale() could not set the given locale");
+
+    printf("The current locale is %s\n", mylocale);
+
+    int dayofweek = DAY_1;
+    while (dayofweek < DAY_1 + 7) {
+        printf("%s\n", nl_langinfo(dayofweek));
+        dayofweek++;
+        /* This prints NL_DAY_1, NL_DAY_2, ..., NL_DAY_7 */
+    }
+    return 0;
+}
+// ./langinfo_demo
+// Output:
+/*
+The current locale is en_US.UTF-8
+Sunday
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Saturday
+*/
+
+/******************************************************************************/ 
+
+// monetary_demo.c
+// Displays monetary value in different locale currencies
+
+#define _GNU_SOURCE
+#include <locale.h>     // setlocale (3)
+#include <langinfo.h>   // I don't think I need it
+#include <stdio.h>      // fprintf (3), printf (3)
+#include <stddef.h>     // NULL
+#include <stdlib.h>     // exit (3), atof (3)
+#include <string.h>     // strdup (3)
+
+#define LOCALE_ERROR 1
+
+void fatal_error(int code, const char *message) {
+    fprintf(stderr, "Error %d: %s\n", code, message);
+    exit(EXIT_FAILURE);
+}
+
+void using_locale(char *new_locale, void (*func)(double), double argument) {
+    char *old_locale, *saved_locale;
+
+    /* Get the name of the current locale. */
+    old_locale = setlocale(LC_ALL, NULL);
+
+    /* Copy the name so it won’t be clobbered by setlocale. */
+    saved_locale = strdup(old_locale);
+    if (saved_locale == NULL)
+        fatal_error(-1, "could not create a new locale");
+
+    /* Now change the locale. */
+    setlocale(LC_ALL, new_locale);
+    /* Call the function passed in. */
+    (*func)(argument);
+
+    /* Restore the original locale. */
+    setlocale(LC_ALL, saved_locale);
+    free(saved_locale);
+}
+
+void print_amount(double amount) {
+    char buffer[200];
+
+    strfmon(buffer, sizeof(buffer), "local: %= #6n;\tinternational: %= #6i",
+            amount, amount);
+    printf("%s\n", buffer);
+}
+
+void usage_error(const char *message) {
+    fprintf(stderr, "Usage Error: %s\n", message);
+    exit(EXIT_FAILURE);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        usage_error("missing argument");
+    }
+
+    setlocale(LC_ALL, "");
+    double amount = atof(argv[1]);
+
+    using_locale("de_DE.utf8", print_amount, amount);
+    using_locale("ja_JP.utf8", print_amount, amount);
+    using_locale("es_ES.utf8", print_amount, amount);
+    using_locale("en_GB.utf8", print_amount, amount);
+    using_locale("quz_PE.UTF-8", print_amount, amount);
+    using_locale("sa_IN.UTF-8", print_amount, amount);
+    using_locale("zh_CN.UTF-8", print_amount, amount);
+    using_locale("zh_HK.UTF-8", print_amount, amount);
+    using_locale("zh_SG.UTF-8", print_amount, amount);
+    using_locale("zh_TW.UTF-8", print_amount, amount);
+    return 0;
+}
+// ./monetary_demo 5
+/*
+local:  $      5.00;    international:  USD       5.00
+local:  ￥     5;       international:  JPY       5
+local:  €      5,00;    international:  EUR       5,00 
+local:  £      5.00;    international:  GBP       5.00
+local:  $      5.00;    international:  USD       5.00
+local:  $      5.00;    international:  USD       5.00
+local:  $      5.00;    international:  USD       5.00
+local:  $      5.00;    international:  USD       5.00
+local:  $      5.00;    international:  USD       5.00
+local:  $      5.00;    international:  USD       5.00
+*/
+
+/******************************************************************************/
+
+// showdate1.c
+#define _GNU_SOURCE
+#include <stddef.h>
+#include <stdio.h>      // printf (3)
+#include <stdlib.h>     // exit (3)
+#include <time.h>       // time (2), localetime (3), strftime (3)
+
+#define FORMAT "%c"
+
+void fatal_error(int code, const char *message) {
+    fprintf(stderr, "Error %d: %s\n", code, message);
+    exit(EXIT_FAILURE);
+}
+
+int main(int argc, char *argv[]) {
+    char formatted_date[200];
+    time_t current_time;
+    struct tm *broken_down_time;
+
+    /* Get the current time. */
+    current_time = time(NULL);
+
+    /* Convert the current time into broken-down time. */
+    broken_down_time = localtime(&current_time);
+
+    /* The only possible error is EOVERFLOW, and localtime returns NULL
+       if the error occurred. */
+    if (broken_down_time == NULL) {
+        fatal_error(EXIT_FAILURE, "localtime");
+    }
+
+    /* Create a string from the broken-down time using the %c format. */
+    if (0 == strftime(formatted_date, sizeof(formatted_date), , broken_down_time)) {
+        /* strftime does not set errno. If return is 0, it is a FORMAT error
+           because we expect a non-zero number of bytes in the output
+           string. */
+        fatal_error(EXIT_FAILURE, "Conversion to a date-time string failed or produced "
+                                 " an empty string\n");
+    }
+
+    /* Print the formatted date to standard output. */
+    printf("%s\n", formatted_date);
+
+    return 0;
+}
+// ./showdate1
+// Output: Sat Dec  9 21:06:59 2023
+
+
+//showdate2.c
+#include <stdio.h>      // sprintf (3), printf (3)
+#include <string.h>
+#include <stdlib.h>
+#include <string.h>     // strcpy (3), strlen (3), strncpy (3), basename (3)
+#include <errno.h>      //
+#include <time.h>       // time (2)
+
+#define MAXLEN 200
+#define FORMAT "%c"
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+int main(int argc, char *argv[]) {
+    char formatted_date[MAXLEN];
+    time_t current_time;
+    struct tm *broken_down_time;
+    char format_string[MAXLEN];
+    char err_msg[MAXLEN]; /* For error messages        */
+
+    if (argc < 2)  /* No argument - use default. */
+        strcpy(format_string, FORMAT);
+    else {
+        if (argv[1][0] == '+') /* argument starts with + */
+            if (strlen(argv[1] + 1) < MAXLEN)
+                strncpy(format_string, argv[1] + 1, MAXLEN - 1);
+            else {
+                sprintf(err_msg, "format string length is too long\n");
+                fatal_error(EXIT_FAILURE, err_msg);
+            }
+        else {
+            sprintf(err_msg, "%s: format should be +\"format-string\"\n", basename(argv[0]));
+            fatal_error(EXIT_FAILURE, err_msg);
+        }
+    }
+
+    /* get the current time */
+    current_time = time(NULL);
+
+    /* Convert the current time into broken-down time. */
+    broken_down_time = localtime(&current_time);
+
+    /* The only possible error is EOVERFLOW, and localtime returns NULL
+       if the error occurred. */
+    if (broken_down_time == NULL) {
+        fatal_error(EOVERFLOW, "localtime");
+    }
+
+    /* Create a string from the broken down time using the %c format. */
+    if (0 == strftime(formatted_date, sizeof(formatted_date),
+                      format_string, broken_down_time)) {
+        /* strftime does not set errno. If return is 0, it is an error
+           because we expect a non-zero number of bytes in the output
+           string. */
+        fatal_error(EXIT_FAILURE, "Conversion to a date-time string "
+                                   "failed or produced an empty string\n");
+    }
+
+    /* Print the formatted date to standard output. */
+    printf("%s\n", formatted_date);
+
+    return 0;
+}
+// ./showdate2 +"%a %b %d, %Y, at %R"
+// Output: Sat Dec 09, 2023, at 21:37
+
+/******************************************************************************/
+
+// newlocale_demo.c
+// Prints a number and date in the locale passed in as an argument
+#define _XOPEN_SOURCE 700   // uselocale (3)
+#include <locale.h>         // newlocale (3), uselocale (3), freelocale (3)
+#include <stdio.h>          // fprintf (3)
+#include <stdlib.h>         // exit (3)
+#include <string.h>
+#include <time.h>           // struct tm, time_t, time (2), localtime (3), strftime (3)
+
+#define TESTNUMBER 123456789.12
+#define STRING_MAX 100
+
+void usage_error(const char *message) {
+    fprintf(stderr, "Usage error: %s\n", message);
+    exit(EXIT_FAILURE);
+}
+
+void fatal_error(int code, const char *message) {
+    fprintf(stderr, "Error %d: %s\n", code, message);
+    exit(EXIT_FAILURE);
+}
+
+int main(int argc, char *argv[]) {
+    time_t t;                  /* To store current time          */
+    struct tm *tm;             /* To store broken-down time      */
+    char buf[100];             /* To store formatted time string */
+    char err_msg[STRING_MAX];   /* For error messages             */
+    locale_t loc, newloc;      /* Temporary locale objects       */
+
+    if (argc < 2) {
+        usage_error("missing argument");
+    }
+
+    /* Create a new locale object, using the LC_NUMERIC settings
+       from the locale specified in argv[1] */
+    loc = newlocale(LC_NUMERIC_MASK, argv[1], (locale_t) 0);
+    if (loc == (locale_t) 0)
+        fatal_error(EXIT_FAILURE, "newlocale");
+
+    /* Now we use the LC_TIME values of the second command-line
+       argument to modify the locale object we just created.
+       The effect is that it has the numeric settings of the first
+       locale and the time settings of the second.
+       We assign the returned locale to a new locale object so
+       that we don't overwrite loc, in case something goes wrong. */
+    if (argc > 2) {
+        newloc = newlocale(LC_TIME_MASK, argv[2], loc);
+        if (newloc == (locale_t) 0)
+            fatal_error(EXIT_FAILURE, "newlocale");
+        loc = newloc;
+    }
+    /* Use the newly created locale  */
+    uselocale(loc);
+
+    /* Test effect of LC_NUMERIC */
+    printf("%'8.2f\n", TESTNUMBER);
+
+    /* Test effect of LC_TIME */
+    t = time(NULL);             // Get current time
+    if ((tm = localtime(&t)) == NULL)
+        fatal_error(EXIT_FAILURE, "localtime");
+
+    /* Call strftime using the %c format for locale default */
+    if (0 == strftime(buf, sizeof(buf), "%c", tm))
+        fatal_error(EXIT_FAILURE, "strftime");
+    printf("%s\n", buf);
+
+    /* Free the loc locale object */
+    uselocale(LC_GLOBAL_LOCALE);    /* So loc is no longer in use */
+    freelocale(loc);                /* release storage for loc */
+    return 0;
+}
+
+/******************************************************************************/
+
+// smallest.c
+#define _GNU_SOURCE
+#include <stdio.h>          // fprintf (3), sprintf (3)
+#include <stdlib.h>         // exit (3)
+#include <string.h>         // basename (3)
+#include <errno.h>
+#include <stddef.h>
+#include <locale.h>         // setlocale (3)
+
+#define MAXLEN 256
+
+void usage_error(const char* msg) {
+    fprintf(stderr, "Usage Error: %s\n", msg);
+    exit(EXIT_FAILURE);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+int main(int argc, char *argv[]) {
+    char *smallest;
+    int  num_elements;
+    char usage_msg[MAXLEN];
+    int  i = 1, j;
+
+    if (argc < 3) {
+        sprintf(usage_msg, "%s string string ...\n", basename(argv[0]));
+        usage_error(usage_msg);
+    }
+
+    if (NULL == setlocale(LC_COLLATE, ""))
+        fatal_error(-1, "setlocale");
+
+    num_elements = argc - 1; /* Number of words to compare */
+    smallest = argv[i];
+
+    for (j = i + 1; j <= num_elements; j++)
+        if (strcoll(smallest, argv[j]) > 0)
+            smallest = argv[j];
+
+    printf("%s\n", smallest);
+
+    return 0;
+}
+// ./smallest 5 4 9 a0
+// Output: 4
+
+/******************************************************************************/

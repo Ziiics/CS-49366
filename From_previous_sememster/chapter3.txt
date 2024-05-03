@@ -1,0 +1,743 @@
+/*
+Man Pages
+       1   Executable programs or shell commands, command line tools
+                man, vim, more, less, apropos
+       2   System calls (functions provided by the kernel), written in C code
+                gethostname, EFAULT, EINVAL, ENAMETOOLONG
+       3   Library calls (functions within program libraries), built from system calls
+                basename, strcpy, strncpy, gnu_get_libc_version, getopt
+       4   Special files (usually found in /dev)
+       5   File formats and conventions, e.g. /etc/passwd
+       6   Games
+       7   Miscellaneous (including macro packages and conven‐
+           tions), e.g. man(7), groff(7), man-pages(7)
+       8   System  administration  commands  (usually only for
+           root)
+       9   Kernel routines [Non standard]
+
+man will search in the order of the sections and only display the first
+one even if there are more pages in later sections
+*/
+
+/******************************************************************************/
+
+/*
+SECTION 2
+int gethostname(char *name, size_t len);
+    Returns the null-terminated hostname to name (which has a length of len bytes (letters))
+    On success, it returns 0. On error it returns -1 and errno is set.
+    
+ERRORS
+    EFAULT name is an invalid address.
+
+    EINVAL len  is  negative  or,  for  sethostname(),  len is
+            larger than the maximum allowed size.
+
+    ENAMETOOLONG
+            (glibc gethostname()) len is smaller than  the  actual  size. 
+
+long syscall(long number, ...);
+    Invokes system call that has the specified number with the specified arguments
+    Useful when there is no wrapper function in the C library
+    Returns 0 on success while -1 indicates an error and error number is stored in errno
+
+SECTION 3
+char *basename(char *path);
+    There are two different versions of  basename() - the POSIX version described 
+    above which gets the file name from a path by sepeerating by '/'.
+    Example: Pointer to string /usr/bin/sort will allocate a copy of 
+    the string 'sort' and return the address to this string. The GNU version does the
+    same thing.
+
+Pointer to array of strings
+    char **envp = environ;
+
+char *strcpy(char *dest, const char *src);
+    Copy source (src) to destination (dest) including null byte
+char *strncpy(char *dest, const char *src, size_t n);
+    Copies string including the null byte that source (src) points to and puts
+    it in destination (dest) but only for the first n bytes (letters)
+    Note: if first n bytes does not include null byte, then dest string will not be null terinated
+    Note: If n is bigger than length of src, then additional null bytes are incuded to dest to make 
+    sure n bytes written
+
+const char *gnu_get_libc_version(void);
+    Returns a string of glibc version of current version
+
+int getopt(int argc, char * const argv[], const char *optstring);
+    Parses the command line and rearranges the cmd line args. If there are '-' options,
+    then they are put to the front with their argument if they requIre one, and any arguments
+    before it are put directly after all options have been put to the front. You have to call
+    getopt() repeatedly to get to the next option. 
+    Returns -1 when there are no more arguments which also sets optind to the first non-option argument
+
+    optarg: if an option can have an argument, optarg points to the string directly after the option
+    optind: After all options gave been parsed, optind is the first index from argv that contains
+    just a regular argument, not related to options
+    optopt: If getopt encounters an option character not included in optstring or a missing required
+    argument, it sets optopt to the actual option character (like 'c').
+    optstring contains options with :'s
+
+ void perror(const char *s);
+    The perror() function produces a message on standard error describing the last error encountered 
+    during a call to a system or library function.
+    s should be the name of the function that incurred the error
+
+char *strrchr(const char *s, int c);
+    Returns a pointer to the last occurrence of the character c in the string s so if you want what
+    comes after, you have to do ptr+1
+    Returns NULL if the character is not found
+    '\0' is considered part of the string so it can return pointer to the terminator
+
+int sscanf(const char *str, const char *format, ...);
+    Reads its input from the characer string pointed to by str
+    The format tells sscanf how to read the str and the last paramter is where it will be stored
+
+char *strerror(int errnum);
+    Returns a pointer to a string that describes the error code passed in the argument
+    If the error number is unknown, returns "Unknown error nnn"
+    ERRORS: EINVAL (errnum was not a valid number) and ERANGE (not enough storage to contain the error
+    description string)
+
+ int fprintf(FILE *stream, const char *format, ...);
+    Write output to the given output stream
+    Return the number of characters printed excluding the null byte
+    
+long strtol(const char *nptr, char **endptr, int base);
+    Converts the inital part of the string in nptr to a long integer value according to the given base
+    Zero base is considered decimal base
+    If endptr is not NULL, stores the address of the first invalid character in *endptr
+    Returns the conversion unless the value underflows (returns (LONG_MIN) or overflows
+    (LONG_MAX) but in both cases errno is set to ERANGE
+    
+long long strtoll(const char *nptr, char **endptr, int base);
+    Sams as strtol but returns long long
+*/
+
+/******************************************************************************/
+
+// badenv.c
+#include <stdlib.h>         // getenv (3)
+#include <stdio.h>          // printf (3)
+
+int main()
+{
+    char *home, *user;
+    home  = getenv("HOME");
+    if ( NULL != home ) {
+        user = getenv("USER");
+        if ( NULL != user )
+            printf("USER=%s and HOME=%s\n", user, home);
+    }
+    return 0;
+}
+// ./badenv
+// Output: USER=brandon.cohen42 and HOME=/data/biocs/b/student.accounts/brandon.cohen42
+
+
+// envdemo.c
+// Please also look at chapter 2: getenv_demo.c and badgetenv.c
+#include <stdlib.h>         // getenv (3)
+#include <stdio.h>          // printf (3)
+
+int main()
+{
+    char *path_to_home;
+    path_to_home  = getenv("HOME");
+    if ( NULL == path_to_home )
+        printf("The HOME variable is not in the environment.\n");
+    else
+        printf("HOME=%s\n", path_to_home);
+    return 0;
+}
+// ./envdemo
+// Output: HOME=/data/biocs/b/student.accounts/brandon.cohen42
+
+
+// envdemo2.c
+#include <stdlib.h>         // getenv (3), exit (3)
+#include <stdio.h>          // printf (3)
+
+int main(int argc, char* argv[] )
+{
+    char *path_to_home;
+
+    if  ( argc != 2 ) {
+        fprintf(stderr, "Usage: %s <env-variable>\n", argv[0] );
+        exit(1);
+    }
+    path_to_home  = getenv(argv[1]);
+    if ( NULL == path_to_home )
+        printf("The %s variable is not in the environment.\n",
+                 argv[1]);
+    else
+        printf("%s=%s\n", argv[1], path_to_home);
+    return 0;
+}
+// ./envdemo2 <env-variable>
+// Output: 
+// HOME=/data/biocs/b/student.accounts/brandon.cohen42
+                    // OR
+// The MYHOME variable is not in the environment.
+
+
+// getenvdemo.c
+#include <stdlib.h>         // getenv
+#include <string.h>         // strncpy (3)
+#include <stdio.h>          // printf (3)
+
+int main()
+{
+    char path_to_home[256];
+    strncpy(path_to_home, getenv("HOME"), 255); 
+    if ( NULL == path_to_home )
+        printf("The HOME variable is not in the environment.\n");
+    else
+        printf("HOME=%s\n", path_to_home);
+    return 0;
+}
+// ./getenvdemo
+// Output: HOME=/data/biocs/b/student.accounts/brandon.cohen42
+
+
+// environ_demo.c
+#include <stdlib.h>         // Don't ned but it's still here
+#include <stdio.h>          // printf (3)
+
+/* Declare the environ variable to be able to access it
+   It must be declared extern because it is defined outside
+   of the program
+*/
+extern char **environ;
+
+int main()
+{
+    // Pointer pointing to array of strings
+    char **envp = environ; /* set point to start of list */
+
+    while ( NULL != *envp ) {
+        printf("%s\n", *envp );
+        envp++;
+    }
+    return 0;
+}
+// ./environ_demo
+// Output:
+    /*
+    SHELL=/bin/bash
+    PWD=/data/biocs/b/student.accounts/brandon.cohen42/chapter03
+    LOGNAME=brandon.cohen42
+    XDG_SESSION_TYPE=tty
+    MOTD_SHOWN=pam
+    HOME=/data/biocs/b/student.accounts/brandon.cohen42
+    LANG=en_US.UTF-8
+    SSH_CONNECTION=146.95.214.131 37846 146.95.214.49 22
+    XDG_SESSION_CLASS=user
+    TERM=xterm-256color
+    USER=brandon.cohen42
+    SHLVL=1
+    XDG_SESSION_ID=2267
+    XDG_RUNTIME_DIR=/run/user/16134
+    SSH_CLIENT=146.95.214.131 37846 22
+    XDG_DATA_DIRS=/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/data/biocs/b/student.accounts/cs493.66/bin:/data/biocs/b/student.accounts/brandon.cohen42/.local/bin:/data/biocs/b/student.accounts/brandon.cohen42/bin
+    DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/16134/bus
+    SSH_TTY=/dev/pts/0
+    _=./environ_demo
+    OLDPWD=/data/biocs/b/student.accounts/brandon.cohen42/chapter02
+    */
+
+/******************************************************************************/
+
+// printargs.c
+#include <stdio.h>      // printf (3)
+
+int main(int argc, char *argv[])
+{
+    printf("Arguments found: ");
+    for ( int i = 1; i < argc ; i++ ){
+         printf("(%d) %s ", i, argv[i]);
+    }
+
+    printf("\n");
+    return 0;
+}
+// ./printargs hi i am
+// Arguments found: (1) hi (2) i (3) am
+
+
+// cmmdargs.c
+#include <stdio.h>      // printf (3)
+
+int main(int argc, char * argv[], char * envp[])
+{
+    int n = 0;
+    int i = 0;
+
+    printf("\n");
+    while ( argv[i++] != NULL )
+         printf("Command line word #%d is %s\n", i, argv[i]);
+
+    // envp contains all environment variables passed to this process
+    printf("\n");
+    printf("The environment variables passed to this process are:\n\n");
+    while (envp[n] != 0 ) {
+        printf("%s\n",envp[n++]);
+    }
+    printf("\n");
+    return 0;
+}
+// ./cmmdargs <words>
+// Output: 
+    /*
+    Command line word #1 is (null)
+
+    The environment variables passed to this process are:
+
+    SHELL=/bin/bash
+    PWD=/data/biocs/b/student.accounts/brandon.cohen42/chapter03
+    LOGNAME=brandon.cohen42
+    XDG_SESSION_TYPE=tty
+    MOTD_SHOWN=pam
+    HOME=/data/biocs/b/student.accounts/brandon.cohen42
+    LANG=en_US.UTF-8
+    SSH_CONNECTION=146.95.214.131 37846 146.95.214.49 22
+    XDG_SESSION_CLASS=user
+    TERM=xterm-256color
+    USER=brandon.cohen42
+    SHLVL=1
+    XDG_SESSION_ID=2267
+    XDG_RUNTIME_DIR=/run/user/16134
+    SSH_CLIENT=146.95.214.131 37846 22
+    XDG_DATA_DIRS=/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/data/biocs/b/student.accounts/cs493.66/bin:/data/biocs/b/student.accounts/brandon.cohen42/.local/bin:/data/biocs/b/student.accounts/brandon.cohen42/bin
+    DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/16134/bus
+    SSH_TTY=/dev/pts/0
+    _=./cmmdargs
+    OLDPWD=/data/biocs/b/student.accounts/brandon.cohen42/chapter02
+    */
+
+/******************************************************************************/
+
+// str2num.c
+#include <stdio.h>      // printf (3), sscanf (3)
+#include <stdlib.h>     // exit (3)
+#include <string.h>
+
+int main( int argc, char* argv[])
+{
+    int x,y;
+
+    if ( argc < 3 ) {
+        exit(1);
+    }
+
+    // First parameter is string, second paramter format on how it is
+    // reading from the string, and last paramter is where it will be stored
+    sscanf(argv[1], " %d", &x);
+    sscanf(argv[2], " %d", &y);
+    printf("The numbers are %d and %d\n", x, y);
+    return 0;
+}
+// ./str2num 4 3
+// Output: The numbers are 4 and 3
+
+/******************************************************************************/
+
+// progname.c
+#include <stdio.h>          // printf (3)
+#include <string.h>         // strrhr (3)
+
+void main(int argc, char * argv[])
+{
+    char *forwardslashptr;
+    char *suffixptr = NULL;
+
+    forwardslashptr = strrchr( argv[0], '/');
+    if ( forwardslashptr != NULL )
+        suffixptr = forwardslashptr+1;
+    else
+        suffixptr = argv[0];
+
+    if ( suffixptr == NULL )
+        fprintf(stderr, "Program name ends in a / character\n");
+    else
+        printf("Program name is %s\n", suffixptr);
+}
+// ./progname
+// Program name is progname
+
+/******************************************************************************/
+
+// strtoldemo.c
+#include <stdlib.h>         // exit (3), strtol (3)
+#include <stdio.h>          // printf (3), fprintf (3), perror (3)
+#include <errno.h>          // errno
+
+int  main(int argc, char *argv[])
+{
+    char *endptr;
+    long val;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s str \n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    errno = 0;    /* To distinguish success/failure after call */
+    val = strtol(argv[1], &endptr, 0);
+
+    /* Check for various possible errors */
+    if (errno != 0) {
+        perror("strtol");
+        exit(EXIT_FAILURE);     // Used for portability
+    }
+    /* errno == 0 */
+    if (endptr == argv[1]) {
+        /* the first invalid char is the first char of the string */
+        fprintf(stderr, "No digits were found\n");
+        exit(EXIT_FAILURE);     // Used for portability
+    }
+
+    if (*endptr != '\0')
+      /* there are non-number characters following the number.
+         which we can call an error or not, depending. */
+       printf("Characters following the number: \"%s\"\n", endptr);
+
+    /* If we got here, strtol() successfully parsed a number */
+    printf("strtol() returned %ld\n", val);
+    exit(EXIT_SUCCESS);
+}
+// ./strtoldemo 40g6
+// Output: 
+/* 
+Characters following the number: "g6"
+strtol() returned 40
+*/
+
+/******************************************************************************/
+
+// basename_demo.c
+#define _GNU_SOURCE
+#include <stdio.h>          // printf (3)
+#include <string.h>         // basename (3)
+
+int main(int argc, char * argv[])
+{
+    char *progname;
+
+    progname = basename(argv[0]);   // argv[0] = ./basename_demo
+    printf("Program name is %s\n", progname);
+    return 0;
+}
+// ./basename_demo
+// Output: Program name is basename_demo
+
+/******************************************************************************/
+
+// gethost.c
+// Show how to handle errors from a system call
+// System calls set errno values and some library calls
+#include <unistd.h>         // gethostname (2)
+#include <stdio.h>          // printf (3)
+#include <errno.h>          // EFAULT, EINVAL, ENAMETOOLONG
+
+int main()
+{
+    char  name[4];   /* declare string to hold returned value */
+    size_t len = 3;  /* purposely too small so error is revealed */
+    int   returnvalue;
+
+    returnvalue =  gethostname(name, len); /* make the call */
+    if ( -1 == returnvalue ) {
+        switch ( errno ) {
+        case EFAULT:
+            printf("A bad address was passed for the string name\n"); break;
+        case EINVAL:
+            printf("The length argument was negative.\n"); break;
+        case ENAMETOOLONG:
+            printf("The hostname is too long for the allocated array.\n");
+        }
+    }
+    else
+        printf("%s\n", name);
+}
+// ./gethost
+// Output: The hostname is too long for the allocated array.
+
+
+// strerrordemo.c
+#include <unistd.h>         // gethostname (2)
+#include <string.h>         // strerror (3)
+#include <stdio.h>          // printf (3)
+#include <errno.h>          
+
+void main()
+{
+    char  name[4];   /* declare string to hold returned value */
+    size_t len = 3;  /* purposely too small so error is revealed */
+    int   returnvalue;
+
+    returnvalue =  gethostname(name, len); /* make the call */
+    if ( -1 == returnvalue ) {
+        printf("gethostname failed: %s\n", strerror(errno));
+    }
+    else
+        printf("%s\n", name);
+}
+// ./strerrordemo
+// Output: gethostname failed: File name too long
+
+
+// perrordemo.c
+#include <unistd.h>         // gethostname (2)
+#include <stdio.h>          // printf (3), perror (3)
+
+void main()
+{
+    char  name[4];   /* declare string to hold returned value */
+    size_t len = 3;  /* purposely too small so error is revealed */
+    int   returnvalue;
+
+
+    returnvalue =  gethostname(name, len); /* make the call */
+    if ( -1 == returnvalue ) {
+        perror("gethostname:");
+    }
+    else
+        printf("%s\n", name);
+}
+// ./perrordemo
+// Output: gethostname:: File name too long
+
+/******************************************************************************/
+
+// get_libc_version.c
+#include <gnu/libc-version.h>       // gnu_get_libc_version (3)
+
+#include <stdio.h>
+
+void main()
+{
+    printf("The version of glibc is:%s\n",gnu_get_libc_version());
+}
+
+// ./get_libc_version
+// Output: The version of glibc is:2.35
+
+/******************************************************************************/
+
+// getopt_demo.c
+#define _GNU_SOURCE     // I don't believe it is required
+#include <stdio.h>     // printf  (3)
+#include <stdlib.h>    // exit (3)
+#include <unistd.h>    // getopt (3) 
+
+#define  TRUE  1
+#define  FALSE 0
+
+
+int main( int argc, char* argv[])
+{
+    int ch;
+    char options[] = ":hb::c:d:1";
+
+    // -h
+    // -b [optional_arg]
+    // -c required_arg
+    // -d required_arg
+    // -1
+
+    // a letter by itself => no arguments
+    // ':' after letter => required argumennt
+        // pointer set to optarg
+        // if missing, returns '?'
+    // '::' after letter => optional argument
+        // if no argument, optarg = 0
+    // If it finds undefined option, puts character in optopt and returns ?
+    // To distinguish between missing required argument (-b and -c), a ":"
+    // will be at the beginning of the options[] so if there is a missing 
+    // required argument, then it getopt() returns ':'
+
+    opterr = 0;  /* turn off error messages by getopt() */
+
+    while  (TRUE) {
+        /* call getopt, passing argc and argv and the options string */
+        ch = getopt(argc, argv, options);
+
+        /* it returns -1 when it finds no more options  */
+        if ( -1 == ch )
+            break;
+
+        switch ( ch ) {
+        case 'h':                        /* is a switch (no arg) */
+            printf("Found option -h\n");
+            break;
+        case 'b':                         /* has optional argument */
+            if ( 0 != optarg )
+                printf("Found option -b with %s\n", optarg);
+            else
+                printf("Found option -b with no optional argument.\n");
+            break;
+        case 'c':                        /* has required argument */
+            printf("Found option -c with argument %s\n", optarg);
+            break;
+        case 'd':                        /* has required argument */
+            printf("Found option -d with argument %s\n", optarg);
+            break;
+        case '1':                        /* is a switch (no arg) */
+            printf("Found option -1\n");
+            break;
+        case '?' :
+            printf("Found invalid option %c\n", optopt);
+            break;
+        case ':' :
+            printf("Missing required argument\n");
+            break;
+        default:
+           printf ("?? getopt returned character code 0%o ??\n", ch);
+           break;
+        }
+    }
+
+    /* There are no more options: time to check if there are arguments */
+    /* on the rest of the command line. 
+    /* If optind < argc, there is at least one word that is not an option */
+
+    if (optind < argc) {
+        printf ("non-option ARGV-elements: ");
+        while (optind < argc)
+            printf ("%s ", argv[optind++]);
+        printf ("\n");
+    }
+
+    return 0;
+}
+
+/******************************************************************************/
+
+// getopt_demo2.c
+#include <stdio.h>     // print (3)
+#include <stdlib.h>    // exit (3)
+#include <unistd.h>    // getopt (3)
+#include <string.h>    // strlen (3)
+
+#define  TRUE  1
+#define  FALSE 0
+
+int main( int argc, char* argv[])
+{
+    int ch;
+    char options[] = "+:hb::c:1";
+    // h, b => optional argument
+    // c => required argument
+    // l => no argument
+
+    int opt_h = 0;
+    int opt_1 = 0;
+    int opt_b  = 0;
+    int opt_c  = 0;
+    char b_arg[32] = "";
+    char c_arg[32] = "";
+
+    opterr = 0;  /* turn off error messages by getopt() */
+
+    while  (TRUE) {
+        /* call getopt, passing argc and argv and the options string */
+        ch = getopt(argc, argv, options);
+
+        /* it returns -1 when it finds no more options  */
+        if ( -1 == ch )
+            break;
+
+        switch ( ch ) {
+        case 'h':                        /* is a switch (no arg) */
+            opt_h = TRUE;
+            break;
+        case 'b':                         /* has optional argument */
+            opt_b = TRUE;
+            if ( 0 != optarg )
+                strcpy(b_arg, optarg);
+            break;
+        case 'c':                        /* has required argument */
+            opt_c = TRUE;
+            strcpy(c_arg, optarg);
+            break;
+        case '1':                        /* is a switch (no arg) */
+            opt_1 = TRUE;
+            break;
+        case '?' :
+            printf("Found invalid option %c\n", optopt);
+            break;
+        case ':' :
+            printf("Missing required argument\n");
+            break;
+        default:
+           printf ("?? getopt returned character code 0%o ??\n", ch);
+           break;
+        }
+    }
+    /* Finished processing the command-line.  */
+
+    /* Process the options. In this case just print what was found. */
+    printf("Options found:\n");
+    if ( opt_h ) printf("-h \n");
+    if ( opt_1 ) printf("-1 \n");
+    if ( opt_b ) {
+         printf("-b ");
+         if ( strlen(b_arg) > 0 )
+             printf("with argument %s\n", b_arg);
+         else
+             printf("with no argument \n");
+    }
+    if ( opt_c )
+        printf("-c with argument %s\n", c_arg);
+
+    /* optind is the index of the first non-option word in the argv[] array */
+    /* If optind < argc, there is at least one word that is not an option */
+
+    if (optind < argc) {
+        printf ("non-option ARGV-elements:\n");
+        while (optind < argc)
+            printf ("%s ", argv[optind++]);
+        printf ("\n");
+    }
+    return 0;
+}
+
+/******************************************************************************/
+
+// showtid.c
+#include <unistd.h>         // syscall (2)  
+#include <sys/syscall.h>    // syscall (2)
+#include <sys/types.h>      // Thread number
+#include <stdio.h>          // printf (3)
+
+// Demonstrate how to use syscall
+int main(int argc, char *argv[])
+{
+    printf("Thread id %ld\n", syscall(SYS_gettid));
+    /* could also pass __NR_gettid */
+    return 0;
+}
+// ./showtid
+// Output: Thread id 1614817
+
+/******************************************************************************/
+
+// usagecheck_demo.c
+#include <stdio.h>          // printf (3), fprintf (3)
+#include <stdlib.h>         // exit (3)
+
+int main ( int argc,  char * argv[]  )
+{
+    if ( argc < 3 ) { /* too few arguments */
+        /* handle the incorrect usage here */
+        fprintf(stderr, "usage: %s file1 file2\n", argv[0]);
+        exit(1);
+    }
+    printf("About to copy from %s to %s\n", argv[1], argv[2]);
+    /* but no copying yet */
+    return 0;
+}
+// ./usagecheck_demo j k
+// About to copy from j to k

@@ -1,0 +1,2465 @@
+// Two to three lines of code
+// Short answer questions and fill in questions
+// Know what a directory strucutre
+// stat, utmp, passwd struct
+// read, write, open, close
+// Properties of files and directories, i nodes
+// Who wrote Linux? Linus ...
+// POSIX?
+// Questions about how to use the shell
+// 40% writing little programs
+// Internatlization, working with time and locale
+// Not going to ask but should know how to write a copy command
+// How to handle errors
+// Direcotry streams and tree
+// Record keeping and how they are maintained and questions about the assignment
+// In general, questions about the assignments
+// Directory hierarchy is not a tree but instead tree like because it is cyclic directed with hard
+// links and it can have the same file within the different directories so there exists nodes
+// with more than one parent but this breaks the tree strucutre since every node should have one parent
+// except the root. This problem comes from symbolic links which can create infinite loops
+// Tree traversal is depth first (not breadth order) and is postorder so it has to process all
+// lowest children first and then goes up to its parents
+
+// The problem with the bad lsdir is that if you want to get an idea of how much disk usage for each directory
+// but if there are hard links then you are counting a file twice. The way to get around that is to hash when a file
+// has been visited
+
+/*
+Man Pages
+       1   Executable programs or shell commands, command line tools
+                man, vim, more, less, apropos
+       2   System calls (functions provided by the kernel), written in C code
+                open, statx, stat, chmod, time, getpid()
+       3   Library calls (functions within program libraries), built from system calls
+                printf, scanf, free, 
+       4   Special files (usually found in /dev)
+       5   File formats and conventions, e.g. /etc/passwd
+       6   Games
+       7   Miscellaneous (including macro packages and conven‐
+           tions), e.g. man(7), groff(7), man-pages(7)
+       8   System  administration  commands  (usually only for
+           root)
+       9   Kernel routines [Non standard]
+
+man will search in the order of the sections and only display the first
+one even if there are more pages in later sections
+*/
+
+/*
+SECTION 2
+DIR *opendir(const char *name);
+    The opendir() function opens a directory stream corresponding to the directory name, 
+    and returns a pointer to the directory stream. The stream is positioned at the first 
+    entry in the directory. On error, NULL is returned and errno is set apropriately.
+
+int chdir(const char *path);
+    Changes the current working directory of the calling process to the directory specified in path
+    On success, 0 is returned. On error, -1 is returned and errno is set appropriately
+
+
+SECTION 3
+struct dirent *readdir(DIR *dirp);
+    Returns a pointer to a dirent structure representing the next directory entry in the directory stream pointed 
+    to by dirp. Returns NULL on reaching the end of the directory stream or if an error occurred and errno is set
+struct dirent {
+    ino_t          d_ino;       // Inode number 
+    off_t          d_off;       // Not an offset; see below 
+    unsigned short d_reclen;    // Length of this record 
+    unsigned char  d_type;      // Type of file; not supported by all filesystem types 
+    char           d_name[256]; // Null-terminated filename 
+};
+d_name and d_ino are requred, but the other fields are not.
+
+The fields of the dirent structure are as follows:
+
+d_ino = inode number of the file.
+d_off = treat this field as an opaque value, making no assumptions about its contents
+d_reclen =  size (in  bytes) of the returned record
+d_type = file type, making it possible to avoid the expense of calling lstat(2)
+d_name = null terminated filename (defined by glibc)
+
+glibc defines the  following  macros for d_type:
+    DT_BLK      This is a block device.
+    DT_CHR      This is a character device.
+    DT_DIR      This is a directory.
+    DT_FIFO     This is a named pipe (FIFO).
+    DT_LNK      This is a symbolic link.
+    DT_REG      This is a regular file.
+    DT_SOCK     This is a UNIX domain socket.
+    DT_UNKNOWN  The file type could not be determined.
+
+FTS *fts_open(char * const *path_argv, int options, int (*compar)(const FTSENT **, const FTSENT**) );
+    Takes a pointer to an array of character pointers naming one or more paths which make up a logical file 
+    hierarchy to be traversed. The array must be terminated by a null pointer.
+    Returns a handle (type FTS *) that refers to a file hierarchy stream which can be given to the other functions
+OPTIONS
+    FTS_LOGICAL = Returns the FTSENT structures of the targets if symbolic links
+    FTS_COMFOLLOW = Considers the file itself for symbolic links and not its target
+    FTS_LOGICAL or FTS_COMFOLLOW must be included in function to work.
+    FTS_PHYSICAL = returns FTSENT structures for the symbolic links themselves instead of the target files
+compar() is a user-defined function to order the traversal of the hierarchy. It takes two pointers to FTSENT 
+strucutres as arguments and returns a negatve value, 0, or a positive value
+
+Type FTS represents the file hierarchy itself. struct FTSENT represents aa file in the file hierarchy.
+file and FTSENT are used interchangeably.
+typedef struct _ftsent {
+    unsigned short  fts_info;     // flags for FTSENT structure 
+    char           *fts_accpath;  // access path 
+    char           *fts_path;     // root path 
+    short           fts_pathlen;  // strlen(fts_path) + strlen(fts_name) 
+    char           *fts_name;     // filename 
+    short           fts_namelen;  // strlen(fts_name) 
+    short           fts_level;    // depth (-1 to N)
+    int             fts_errno;    // file errno 
+    long            fts_number;   // local numeric value 
+    void           *fts_pointer;  // local address value 
+    struct _ftsent *fts_parent;   // parent directory 
+    struct _ftsent *fts_link;     // next file structure
+    struct _ftsent *fts_cycle;    // cycle structure 
+    struct stat    *fts_statp;    // stat(2) information 
+} FTSENT;
+
+long telldir(DIR *dirp);
+    Returns the current location associated with the directory stream dirp
+    Needs _XOPEN_SOURCE
+
+void seekdir(DIR *dirp, long loc);
+    Sets the location in the directory stream from which the next readdir(2) will start. THe
+    loc argumnet should be a value returned by a previous call to telldir(3). Does not return anything.
+    Needs _XOPEN_SOURCE
+
+int scandir(const char *dirp, struct dirent ***namelist,
+              int (*filter)(const struct dirent *),
+              int (*compar)(const struct dirent **, const struct dirent **));
+    The scandir() function scans  the  directory  dirp,  calling
+    filter()  on  each  directory entry.  Entries for which fil‐
+    ter() returns nonzero are stored in  strings  allocated  via
+    malloc(3),  sorted  using qsort(3) with the comparison func‐
+    tion compar(), and collected in array namelist which is  al‐
+    located  via  malloc(3).  If filter is NULL, all entries are
+    selected. On error, -1 is returned and errno is set.
+
+int alphasort(const struct dirent **a, const struct dirent **b);
+    Can be used as the comparison function compar(). Needs _GNU_SOURCE.
+    Returns an integer less than, equal to, or greater than 0 if the first
+    argument is considered to be respectively less than, equal to, or greater
+    than the second
+
+FTSENT *fts_read(FTS *ftsp);
+    Returns a pointer to an FTSENT strcutre describing a file in the hierarchy. If
+    all the members of the hierarchy have been returned, the func returns NULL and sets
+    errno to 0.
+
+FTSENT *fts_children(FTS *ftsp, int instr);
+    Returns a pointer to an FTSENT structure describing the first entry in a NULL-terminated
+    linked list of the file in the directory represented by the FTSENT strucutre most recently 
+    trturned by fts_read(). The list is ordered by the user-specificed comparision function.
+    Repeated calls to tis function will re-create this linked list. ON error, reutrns NULL and
+    sets errno.
+    instr is either 0 or FTS_NAMEONLY
+        FTS_NAMEONLY = only the names of the files needed so all fields in the returned linked list
+        are undefined except for fts_name and fts_namelen
+
+int fts_close(FTS *ftsp);
+    Closes the file hierarchy stream reffered to by ftsp and restores the current directory.
+    Returns 0 on success and -1 if an error occurs
+
+int nftw(const char *dirpath,
+        int (*fn) (const char *fpath, const struct stat *sb,
+                    int typeflag, struct FTW *ftwbuf),
+        int nopenfd, int flags);
+    Walks through the directory tree that is located under the directory dirpath and calls fn() once
+    for each entry in the tree. By default, directories are handled before the files and subdirectoreis they contain.
+    fpath is the pathname realtive to the current working directory. sb is a pointer to the stat structure
+    returned by stat for fpath.
+typeflag
+    FTW_F   fpath is a regular file.
+    FTW_D   fpath is a directory.
+    FTW_DNR fpath is a directory which can't be read.
+    FTW_DP fpath is a directory, and FTW_DEPTH was specified  in
+            flags. (If  FTW_DEPTH  was  not specified in flags,
+            then directories will always be visited with typeflag
+            set  to  FTW_D.)  
+    FTW_NS  The stat(2) call failed on fpath, which is not a symbolic  link. 
+    FTW_SL  fpath is a symbolic link, and  FTW_PHYS  was  set  in  flags.
+    FTW_SLN fpath  is a symbolic link pointing to a nonexistent file.  
+ftwbuf is a pointer to a strucutre of type FTW
+    struct FTW {
+        int base;
+        int level;
+    };
+    base is the offset of the filename (basename) and level is the depth of 
+    fpath in the directory tree. As long as fn() returns 0, nftw() will continue
+    either until it has traversed the entire tree (returning 0) or until it encounters 
+    an error such as from malloc(3) (returning -1).
+FLAGS
+FTW_ACTIONRETVAL = handles the return value from fn() differently. fn() should return 
+one of the following values:
+    FTW_CONTINUE = Instructs nftw() to continue normally.
+    FTW_SKIP_SIBLINGS = If  fn()  returns this value, then siblings of the current entry will be  skipped
+    FTW_SKIP_SUBTREE = If  fn()  is  called  with  an entry that is a directory (typeflag  is  FTW_D),  
+                       this  return value  will prevent objects within that direc‐
+                       tory from being passed as arguments  to  fn(). nftw() continues processing with the next sibling of the directory.
+    FTW_STOP = Causes nftw() to return immediately  with  the return value FTW_STOP.
+    FTW_DEPTH = If set, do a post-order traversal calling fn() for the directory itself after handling the contents 
+                of the directory and its subdirectories. 
+    FTW_MOUNT = If set, stay within the same filesystem (i.e., do not cross mount points).
+    FTW_PHYS = If set, do not follow symbolic links. If not set, symbolic links are followed, but no file is reported twice.
+
+void *calloc(size_t nmemb, size_t size);
+    Changes the size of the memory block pointed to by ptr to size bytes. If the new size is larger
+    than the old size, the added memory will not be initialized. If ptr is NULL, then the call is 
+    equivalent to malloc(size), for all values of size; if size is equal to zero, and ptr is
+    not  NULL, then the call is equivalent to free(ptr). Unless ptr is NULL, it must have been 
+    returned by an  earlier  call to malloc(), calloc(), or realloc(). 
+    Returns a pointer to the newly allocated mameory or NULL if te request failed
+
+void *memset(void *s, int c, size_t n);
+    Fills the first n bytes of the memory area pointed to by s with the constant byte c
+    Returns a pointer to the memory area s
+*/
+
+/******************************************************************************/
+
+// dircalls.c
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <fcntl.h>          // open (2)
+#include <unistd.h>         // read (2), write (2), close (2)
+#include <sys/stat.h>       // open (2)
+
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+int main(int argc, char* argv[])
+{
+    int fd;
+    char buf[2];
+
+    if ( argc < 2 )
+        printf("usage: %s file\n", argv[0]);
+    else {
+        errno = 0;
+        fd = open(argv[1], O_RDONLY);
+        if ( -1 == fd )
+            fatal_error(errno, "open");
+        errno = 0;
+        if ( -1 == read(fd, buf, 1) )
+            perror("read() was not successful");
+        else
+            printf("read() was successful.\n");
+
+        errno = 0;
+        if ( -1 == close(fd) )
+            fatal_error(errno, "close");;
+    }
+    return 0;
+}
+// ./dircalls file 
+// Output: read() was successful.
+
+/******************************************************************************/
+
+// checksyscalls.c
+#define _GNU_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <fcntl.h>          // open (2)
+#include <unistd.h>         // read (2), write (2), close (2)
+#include <sys/types.h>
+#include <sys/stat.h>       // stat (2), open (2), S_ISDIR(mode)
+
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+int main(int argc, char* argv[])
+{
+    int fd;
+    char buf[32];
+    struct stat sb;
+
+    if ( argc < 2 )
+        printf("usage: %s file\n", argv[0]);
+    else {
+        errno = 0;
+        if ( -1 == stat(argv[1], &sb) )
+            fatal_error(errno,"stat");
+        if ( S_ISDIR(sb.st_mode))
+            printf("This file is a directory.\n");
+
+        errno = 0;
+        fd = open(argv[1], O_RDONLY);
+        if ( -1 == fd )
+            fatal_error(errno, "open");
+        printf("open() was successful.\n");
+
+        errno = 0;
+        if ( -1 == read(fd, buf, 1) )
+            perror("read() not successful");
+        else
+            printf("read() was successful.\n");
+
+        errno = 0;
+        if ( -1 == close(fd) )
+            fatal_error(errno, "close");
+        printf("close() was successful.\n");
+    }
+    return 0;
+}
+// ./checksyscalls file
+// Output:
+/*
+open() was successful.
+read() was successful.
+close() was successful.
+*/
+
+/******************************************************************************/
+
+// direnttest.c
+// Open a directory
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <sys/types.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+
+
+int main(int argc, char* argv[])
+{
+
+    DIR            *dir;
+    struct dirent  *entry;
+    //int            done = 0;
+
+    if ( argc < 2 )
+        return 1;
+
+    dir = opendir(argv[1]);
+    while ( 1 ) {
+        errno = 0;
+        if ( NULL == (entry = readdir(dir) ) )
+            if ( errno != 0 )
+                exit(EXIT_FAILURE);
+            else
+                break;
+
+        printf("%s\t", entry->d_name);
+#ifdef _DIRENT_HAVE_D_TYPE
+        switch ( entry->d_type ) {
+            case DT_BLK:     printf("block special\n"); break;
+            case DT_CHR:     printf("character special\n"); break;
+            case DT_DIR:     printf("directory\n"); break;
+            case DT_FIFO:    printf("FIFO\n"); break;
+            case DT_LNK:     printf("symbolic link\n"); break;
+            case DT_REG:     printf("regular\n"); break;
+            case DT_SOCK:    printf("socket\n"); break;
+            case DT_UNKNOWN: printf("unknown\n"); break;
+            default:         printf("\n");
+         }
+#else
+        printf("\n");
+#endif
+    }
+    return 0;
+}
+// ./direnttest hello
+// Output:
+/*
+.       directory
+..      directory
+foo     regular
+*/
+
+/******************************************************************************/
+
+// ftsdemo.c
+// Displays files with sizes and finds largest file
+#include <stdio.h>          // fprintf (3)
+#include <stdlib.h>         // exit (3)
+#include <string.h>         // strncpy (3), strcoll (3)
+#include <errno.h>  
+#include <string.h>         // strcoll (3)
+#include <fts.h>            // fts_open (3), fts_read (3)
+#include <sys/types.h>      // fts_open (3), fts_read (3)
+#include <sys/stat.h>       // fts_open (3), fts_read (3)
+#include <limits.h>         // PATH_MAX
+
+void usage_error(const char *msg) {
+    fprintf(stderr, "Usage Error: %s\n", msg);
+    exit(EXIT_FAILURE);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+
+int namecmp(const FTSENT **s1, const FTSENT **s2)
+{
+    return (strcoll((*s1)->fts_name, (*s2)->fts_name));
+}
+
+int main(int argc, char* argv[])
+{
+    FTS *tree;
+    FTSENT *file;
+    char errmssge[128];
+    char largest_file[PATH_MAX];
+    size_t  max = 0, size;
+
+    if ( argc < 2 ) {
+        sprintf(errmssge,"%s directory\n", argv[0]);
+        usage_error(errmssge);
+    }
+
+    char *dir[] = { argv[1],  NULL };
+
+    if ( NULL == (tree = fts_open(dir, FTS_PHYSICAL , namecmp)))
+        fatal_error(errno, "fts_open");
+
+    errno = 0;
+    while ((file = fts_read(tree))) {
+        switch (file->fts_info) {
+        case FTS_DNR:  /* Cannot read directory */
+            fprintf(stderr, "Could not read %s\n", file->fts_path);
+            continue;
+        case FTS_ERR:  /* Miscellaneous error */
+            fprintf(stderr, "Error on %s\n", file->fts_path);
+            continue;
+        case FTS_NS:  /* stat() error - display message and continue . */
+            fprintf(stderr, "Could not stat %s\n", file->fts_path);
+            continue;
+        case FTS_DP:  /* Ignore post-order visit to directory. */
+            continue;
+        }
+        size = file->fts_statp->st_size;
+        if ( max < size ) {
+            max = size;
+            strncpy(largest_file, file->fts_path, 1+file->fts_pathlen);
+        }
+        printf("%12ld\t%*s%s\n", size,
+                4*(file->fts_level), " ", file->fts_path);
+        errno = 0;
+    }
+    if (errno != 0)
+        fatal_error(errno, "fts_read");
+
+    printf("Largest file: %s; Size=%lu\n", largest_file, max);
+    if (fts_close(tree) < 0)
+      fatal_error(errno, "fts_close");
+    return(EXIT_SUCCESS);
+}
+// ./ftsdemo hello
+// Output:
+/*
+        4096     hello
+           0        hello/f
+Largest file: hello; Size=4096
+*/
+
+/******************************************************************************/
+
+// ftsdemo1.c
+// Sorts files in order
+#include <stdio.h>          // fprintf (3)
+#include <stdlib.h>         // exit (3)
+#include <string.h>         // strncpy (3), strcoll (3)
+#include <errno.h>  
+#include <string.h>         // strcoll (3)
+#include <fts.h>            // fts_open (3), fts_read (3)
+#include <sys/types.h>      // fts_open (3), fts_read (3)
+#include <sys/stat.h>       // fts_open (3), fts_read (3)
+#include <limits.h>         // PATH_MAX
+
+void usage_error(const char *msg) {
+    fprintf(stderr, "Usage Error: %s\n", msg);
+    exit(EXIT_FAILURE);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+
+int cmp_entries(const FTSENT **a, const FTSENT **b)
+{
+    return strcoll((*a)->fts_name, (*b)->fts_name);
+}
+
+int main(int argc, char* argv[])
+{
+    FTS *tree;
+    FTSENT *parent;
+    FTSENT *file;
+    char *dirs[] = { ".", NULL };
+
+    /* Get a FTS stream, reporting on symbolic links themselves
+       rather than their targets. */
+    errno = 0;
+    tree = fts_open(dirs, FTS_PHYSICAL, cmp_entries);
+    if (tree == NULL)
+        fatal_error(errno,"fts_open");
+
+    /* Read the tree first to get a pointer to the FTSENT structure for
+       the directory, otherwise the call to fts_children() will just
+       return a pointer to the top level directory. */
+    errno = 0;
+    parent = fts_read(tree);
+    if ( NULL == parent )
+        fatal_error(errno, "fts_read");
+
+    /* Store the size in bytes of the parent file in fts_number. */
+    parent->fts_number = parent->fts_statp->st_size;
+
+    errno = 0;
+    if ( NULL == (file = fts_children(tree, 0))  ) {
+        if ( errno != 0 )
+            fatal_error(errno,"fts_children");
+        else
+            fprintf(stderr, "empty directory\n");
+    }
+    while ( file != NULL ) {
+        switch (file->fts_info) {
+        case FTS_DNR:  /* Cannot read directory */
+            fprintf(stderr, "Could not read %s\n", file->fts_path);
+            continue;
+        case FTS_ERR:  /* Miscellaneous error */
+            fprintf(stderr, "Error on %s\n", file->fts_path);
+            continue;
+        case FTS_NS:    /* stat() error */
+        case FTS_NSOK:  /* stat() error */
+            /* Print error, then continue to next files. */
+            fprintf(stderr, "Could not stat %s\n", file->fts_path);
+            continue;
+        case FTS_DP:
+          /* Returned to directory for second time as part of
+             post-order traversal, so do not process. */
+            continue;
+        }
+
+        /* Print the filename. */
+        printf("%s\n", file->fts_name);
+        /* Add the file's size to fts_number and advance to next file. */
+        file->fts_parent->fts_number += file->fts_statp->st_size;
+        file = file->fts_link;
+    }
+    printf("Total bytes: %lu\n", parent->fts_number);
+    if ( fts_close(tree) < 0)
+      perror("fts_close");
+
+    return(EXIT_SUCCESS);
+}
+// ./ftsdemo1
+// Output:
+/*
+Makefile
+checksyscalls
+checksyscalls.c
+dircalls
+dircalls.c
+direnttest
+direnttest.c
+ftsdemo
+ftsdemo.c
+ftsdemo1
+ftsdemo1.c
+hello
+lsdir
+lsdir.c
+lsdir2
+lsdir2.c
+lsdir3
+lsdir3.c
+lsdir4_du
+lsdir4_du.c
+lsdir_rec
+lsdir_rec.c
+lsdirbad
+lsdirbad.c
+lsdirsorted_rec
+lsdirsorted_rec.c
+nftw_manpage_example
+nftw_manpage_example.c
+nftwdemo
+nftwdemo.c
+scandir_manpage_example
+scandir_manpage_example.c
+scandirdemo
+scandirdemo.c
+showdirs_array
+showdirs_array.c
+showdu
+showdu.c
+showdu2
+showdu2.c
+showpwd
+showpwd.c
+sortbysize
+sortbysize.c
+temp
+temp.c
+Total bytes: 553922
+*/
+
+/******************************************************************************/
+
+// lsdir.c
+// Prints names of files/directories in a directory
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <sys/types.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void error_mssge(int code, const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+/** listdir(dirstream) prints the filenames contained in the directory
+*   pointed to by dirstream, one per line, including . and .., in
+*   the order determined by the stream itself.
+*/
+void listdir( DIR *dirp, int flags )
+{
+    struct dirent   *direntp;      /* Pointer to directory entry structure  */
+    BOOL            done = FALSE;  /* Flag to control loop execution        */
+
+    while ( !done ) {
+        errno = 0;
+        direntp = readdir( dirp );                       /* Get next entry. */
+        if ( direntp == NULL && errno != 0 )
+            /* Not the end of the stream, but an error from readdir()       */
+            perror("readdir");
+        else if ( direntp == NULL )
+            /* Implies errno == 0, so it's the end of the stream.           */
+           done = TRUE;
+        else
+           printf("    %s\n", direntp->d_name );          /* Print it.      */
+    }
+    printf("\n");
+}
+
+int main(int argc, char *argv[])
+{
+    DIR   *dirp;
+    int    i;
+    int    ls_flags = 0;
+
+    if ( 1 == argc ) {      /* No arguments; use current working directory. */
+        errno = 0;
+        if ( ( dirp = opendir(".") ) == NULL )
+            fatal_error(errno, "opendir");           /* Could not open cwd. */
+        else
+           listdir( dirp, ls_flags );
+    }
+    else {         /* For each command-line argument, call opendir() on it. */
+        for ( i = 1; i < argc; i++) {
+            errno = 0;
+            if ( ( dirp = opendir(argv[i]) ) == NULL ) {
+                if ( errno == ENOTDIR )  /* It's not a directory. */
+                    printf("%s\n", argv[i] );
+                else  /* It's an error. */
+                    error_mssge(errno, argv[i]);
+            }
+            else {  /* A successful open of a directory */
+                printf("\n%s:\n", argv[i] );
+                listdir( dirp, ls_flags);
+                closedir(dirp);
+            }
+        }
+    }
+    return 0;
+}
+// ./lsdir
+// Output:
+/*
+    .
+    ..
+    showpwd.c
+    sortbysize.c
+    checksyscalls
+    dircalls ...
+*/
+
+/******************************************************************************/
+
+// lsdir2.c
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <sys/types.h>
+#include <dirent.h>         // opendir (3), readdir (3), seekdir (3), telldir (3)
+#include <sys/types.h>
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void error_mssge(int code, const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+#define  LIST_DIRS_FIRST  1
+
+/* A function to determine if a directory entry is a directory */
+/* Check whether we have d_type in struct. If so use it.
+   If not, call stat() and check st_mode for file type. */
+BOOL isdir( const struct dirent *direntp)
+{
+#ifdef _DIRENT_HAVE_D_TYPE
+    if( direntp->d_type  == DT_DIR)
+#else
+    struct stat    statbuf;
+    stat(direntp->d_name, &statbuf);
+    if ( S_ISDIR(statbuf.st_mode)  )
+#endif
+        return TRUE;
+    else
+        return FALSE;
+}
+
+
+/* List Functions */
+struct listnode{
+    long pos;
+    struct listnode *next;
+};
+typedef struct listnode poslist;
+
+void save(long pos,  poslist **list)
+{
+    poslist* pos_node_ptr;
+    static   poslist* last = NULL;
+
+    /* Allocate a new list node. */
+    errno = 0;
+    if ( NULL == (pos_node_ptr = (poslist*) malloc(sizeof(poslist)) ) )
+        fatal_error(errno, "malloc");
+
+    /* Copy the position into the new node. */
+    pos_node_ptr->pos = pos;
+
+    /* Attached the node to the end of the list. */
+    if ( *list == NULL ){
+        *list = pos_node_ptr;
+    }
+    else
+        last->next = pos_node_ptr;
+
+    last = pos_node_ptr;
+    pos_node_ptr->next  = NULL;
+}
+
+void printlist(DIR* dirp, poslist *list)
+{
+    poslist *ptr = list;
+    while ( ptr != NULL ) {
+        seekdir(dirp, ptr->pos);
+        printf("%s\n", readdir(dirp)->d_name);
+        ptr = ptr->next;
+    }
+}
+
+void eraselist(poslist **list)
+{
+    poslist *ptr = *list;
+    poslist *next;
+
+    while ( NULL != ptr ) {
+        next = ptr->next;
+        free(ptr);
+        ptr = next;
+    }
+    *list = NULL;
+}
+
+
+void listdir(DIR *dirp, int flags)
+{
+    struct dirent  *entry;
+    long int       pos;
+    poslist        *saved_positions = NULL;
+
+    while ( 1 ) {
+        pos = telldir(dirp);       /* Save current position.     */
+        errno = 0;                 /* Try to read entry.         */
+        if ( NULL == (entry = readdir(dirp) ) && errno != 0 )
+            perror("readdir");     /* Error reading entry.       */
+        else if ( entry == NULL )
+            break;
+        else {
+            if ( (flags & LIST_DIRS_FIRST) && !isdir(entry) )  {
+                save(pos, &saved_positions);
+                continue;
+            }
+            printf("%s/\n", entry->d_name);
+        }
+    }
+    if ( flags & LIST_DIRS_FIRST )
+        printlist(dirp, saved_positions);
+    eraselist(&saved_positions);
+}
+
+
+int main(int argc, char *argv[])
+{
+    DIR   *dirp;
+    int    i;
+    int    ls_flags = LIST_DIRS_FIRST;
+
+    if ( 1 == argc ) {      /* No arguments; use current working directory. */
+        errno = 0;
+        if ( ( dirp = opendir(".") ) == NULL )
+            fatal_error(errno, "opendir");           /* Could not open cwd. */
+        else
+           listdir( dirp, LIST_DIRS_FIRST );
+    }
+    else {         /* For each command-line argument, call opendir() on it. */
+        for ( i = 1; i < argc; i++) {
+            errno = 0;
+            if ( ( dirp = opendir(argv[i]) ) == NULL ) {
+                if ( errno == ENOTDIR )  /* It's not a directory. */
+                    printf("%s\n", argv[i] );
+                else  /* It's an error. */
+                    error_mssge(errno, argv[i]);
+            }
+            else {  /* A successful open of a directory */
+                printf("\n%s:\n", argv[i] );
+                listdir( dirp, ls_flags );
+                closedir(dirp);
+            }
+        }
+    }
+    return 0;
+}
+// ./lsdir2.c
+// Output:
+/*
+./
+../
+showpwd.c
+sortbysize.c
+checksyscalls ...
+*/
+
+/******************************************************************************/
+
+// lsdir3.c
+// DOESN'T WORK
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <locale.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+
+#define LOCALE_ERROR        1
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+void print( const struct dirent* direntp )
+{
+        printf("%s", direntp->d_name);
+
+        if (direntp->d_type == DT_DIR) {
+            printf("/");
+        }
+
+        printf("\n");
+}
+
+
+int scan_one_dir(const char* dirname, void (*process )(const struct dirent* ))
+{
+    struct dirent **namelist;
+    int n;
+
+    errno = 0;
+    if ( (n = scandir(dirname, &namelist, NULL, dirsfirstsort) ) < 0){
+        fatal_error(errno, "scandir");
+    }
+
+    int i;
+    for (i = 0; i < n; i++) {
+        process(namelist[i]);
+        free(namelist[i]);
+    }
+    free(namelist);
+    return(EXIT_SUCCESS);
+}
+
+
+int main(int argc, char* argv[])
+{
+
+    if ( setlocale(LC_TIME, "")  == NULL )
+        fatal_error( LOCALE_ERROR,
+                 "setlocale() could not set the given locale");
+
+    if ( 1 == argc )
+        scan_one_dir(".", print);
+    else {
+        int i;
+        for (i = 1; i < argc; i++ ) {
+            printf("%s:\n", argv[i]);
+            scan_one_dir(argv[i], print);
+            if ( i < argc-1 ) printf("\n");
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+
+/******************************************************************************/
+
+// lsdir4_du.c
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <locale.h>         // setlocale (3)
+#include <string.h>         // strcmp (3)
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+#include <sys/stat.h>       // lstat (2)
+
+#define LOCALE_ERROR        1
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+/* A function to determine if a directory entry is a directory */
+/* Check whether we have d_type in struct. If so use it.
+   If not, call stat() and check st_mode for file type. */
+BOOL isdir( const struct dirent *direntp)
+{
+#ifdef _DIRENT_HAVE_D_TYPE
+    if( direntp->d_type  == DT_DIR)
+#else
+    struct stat    statbuf;
+    stat(direntp->d_name, &statbuf);
+    if ( S_ISDIR(statbuf.st_mode)  )
+#endif
+        return TRUE;
+    else
+        return FALSE;
+}
+
+
+typedef struct di
+{
+   ino_t  inum;
+   dev_t  dev;
+}  dev_ino;
+
+
+int scan_one_dir(const char* dirname, blkcnt_t    *total )
+{
+    struct dirent **namelist;
+    int i, n;
+    char   pathname[PATH_MAX];
+    struct stat  sb;
+    blkcnt_t    subtotal, current = 0;
+
+    *total = 0;
+    errno = 0;
+    if ( (n = scandir(dirname, &namelist, NULL, alphasort) ) < 0){
+        fatal_error(errno, "scandir");
+    }
+    for (i = 0; i < n; i++) {
+
+        if (strcmp(namelist[i]->d_name, ".") != 0
+            && strcmp(namelist[i]->d_name, "..") != 0) {
+            sprintf(pathname, "%s/%s", dirname, namelist[i]->d_name);
+            lstat(pathname, &sb);
+            current = sb.st_blocks; /* blocks in current file */
+            if ( isdir(namelist[i]) ) {
+                subtotal = 0;  /* total so far in pathname directory */
+                scan_one_dir(pathname, &subtotal);
+                *total = *total + subtotal;
+            }
+            else {
+                printf("%ld\t%s\n",current, pathname);
+                *total += current;
+            }
+        }
+        free(namelist[i]);
+    }
+    lstat(dirname, &sb);
+    *total = *total + sb.st_blocks;
+    printf("%ld\t%s\n", *total, dirname );
+    free(namelist);
+    return(EXIT_SUCCESS);
+}
+
+
+int main(int argc, char* argv[])
+{
+    blkcnt_t   grand_total = 0;
+    if ( setlocale(LC_TIME, "")  == NULL )
+        fatal_error( LOCALE_ERROR,
+                 "setlocale() could not set the given locale");
+
+    if ( 1 == argc )
+        scan_one_dir(".",&grand_total);
+    else {
+        int i;
+        for (i = 1; i < argc; i++ ) {
+            printf("%s:\n", argv[i]);
+            scan_one_dir(argv[i], &grand_total);
+            if ( i < argc-1 ) printf("\n");
+            grand_total = 0;
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+// ./lsdir4_du
+// Output:
+/*
+8       ./Makefile
+56      ./checksyscalls
+8       ./checksyscalls.c
+56      ./dircalls
+*/
+
+/******************************************************************************/
+
+// lsdirbad.c
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <sys/types.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void error_mssge(int code, const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+
+
+/** listdir(dirstream) prints the filenames contained in the directory
+*   pointed to by dirstream, one per line, including . and .., in
+*   the order determined by the stream itself.
+*/
+void listdir( DIR *dirp, int flags )
+{
+    struct dirent   *direntp;      /* Pointer to directory entry structure  */
+    BOOL            done = FALSE;  /* Flag to control loop execution        */
+
+    while ( !done ) {
+        errno = 0;
+        direntp = readdir( dirp );                       /* Get next entry. */
+        if ( direntp == NULL && errno != 0 )
+            /* Not the end of the stream, but an error from readdir()       */
+            perror("readdir");
+        else if ( direntp == NULL )
+            /* Implies errno == 0, so it's the end of the stream.           */
+           done = TRUE;
+        else
+           printf("    %s\n", direntp->d_name );          /* Print it.      */
+    }
+    printf("\n");
+}
+
+
+int main(int argc, char *argv[])
+{
+    DIR   *dirp;
+    int    i;
+    int    ls_flags = 0;
+
+    if ( 1 == argc ) {      /* No arguments; use current working directory. */
+        errno = 0;
+        if ( ( dirp = opendir(".") ) == NULL )
+            fatal_error(errno, "opendir");           /* Could not open cwd. */
+        else
+           listdir( dirp, ls_flags );
+    }
+    else {         /* For each command-line argument, call opendir() on it. */
+        for ( i = 1; i < argc; i++) {
+            errno = 0;
+            if ( ( dirp = opendir(argv[i]) ) == NULL ) {
+                if ( errno == ENOTDIR )  /* It's not a directory. */
+                    printf("%s\n", argv[i] );
+                else  /* It's an error. */
+                    error_mssge(errno, argv[i]);
+            }
+            else {  /* A successful open of a directory */
+                printf("\n%s:\n", argv[i] );
+                listdir( dirp, ls_flags);
+                closedir(dirp);
+            }
+        }
+    }
+                closedir(dirp);
+                closedir(dirp);
+    return 0;
+}
+// ./lsdirbad
+// Output:
+/*
+...
+    temp
+    hello
+    temp.c
+
+double free or corruption (!prev)
+Aborted (core dumped)
+*/
+
+/******************************************************************************/
+
+// lsdir_rec.c
+// Recursive, so prints all pathnames and its children
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <string.h>
+#include <sys/types.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+/* A function to determine if a directory entry is a directory */
+/* Check whether we have d_type in struct. If so use it.
+   If not, call stat() and check st_mode for file type. */
+BOOL isdir( const struct dirent *direntp)
+{
+#ifdef _DIRENT_HAVE_D_TYPE
+    if( direntp->d_type  == DT_DIR)
+#else
+    struct stat    statbuf;
+    stat(direntp->d_name, &statbuf);
+    if ( S_ISDIR(statbuf.st_mode)  )
+#endif
+        return TRUE;
+    else
+        return FALSE;
+}
+
+void error_mssge(int code, const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+void listdir( DIR *dirp, char *dirname,  int flags )
+{
+    struct dirent *direntp;       /* Pointer to directory entry structure  */
+    BOOL          done = FALSE;   /* Flag to control loop execution        */
+    char          pathname[PATH_MAX];  /* Pathname of file to open         */
+    DIR           *subdirp;       /* Dir stream for subdirectory           */
+
+    while ( !done ) {
+        errno = 0;
+        direntp = readdir( dirp );                       /* Get next entry. */
+        if ( direntp == NULL && errno != 0 )
+            /* Not the end of the stream, but an error from readdir()       */
+            perror("readdir");
+        else if ( direntp == NULL )
+            /* Implies errno == 0, so it's the end of the stream.           */
+           done = TRUE;
+        else {
+            // You have to not look at . and .. because . points to itself
+            // so it is an infinite loop. If .. is kept, then you will be in 
+            // in an infinte loop between the parent and child
+            if (strcmp(direntp->d_name, ".") != 0
+             && strcmp(direntp->d_name, "..") != 0) {
+                sprintf(pathname, "%s/%s", dirname, direntp->d_name);
+                printf("%s\n",pathname);
+                if ( isdir(direntp) ) {
+                    errno = 0;
+                    if ( ( subdirp = opendir(pathname) ) == NULL ) {
+                        error_mssge(errno, direntp->d_name);
+                    }
+                    else {
+                        listdir(subdirp, pathname, flags);
+                        closedir(subdirp);
+                    }
+                }
+            }
+        }
+    }
+    printf("\n");
+}
+
+
+int main(int argc, char *argv[])
+{
+    DIR   *dirp;
+    int    i;
+    int    ls_flags = 0;
+
+    if ( 1 == argc ) {      /* No arguments; use current working directory. */
+        errno = 0;
+        if ( ( dirp = opendir(".") ) == NULL )
+            fatal_error(errno, "opendir");           /* Could not open cwd. */
+        else
+           listdir( dirp, ".",  ls_flags );
+    }
+    else {         /* For each command-line argument, call opendir() on it. */
+        for ( i = 1; i < argc; i++) {
+            errno = 0;
+            if ( ( dirp = opendir(argv[i]) ) == NULL ) {
+                if ( errno == ENOTDIR )  /* It's not a directory. */
+                    printf("%s\n", argv[i] );
+                else  /* It's an error. */
+                    error_mssge(errno, argv[i]);
+            }
+            else {  /* A successful open of a directory */
+                printf("\n%s:\n", argv[i] );
+                listdir( dirp, argv[i], ls_flags);
+                closedir(dirp);
+            }
+        }
+    }
+    return 0;
+}
+// ./lsdir_rec
+// Output: 
+/*
+./showpwd.c
+./sortbysize.c
+./checksyscalls
+...
+*/
+/******************************************************************************/
+
+// lsdirsorted_rec.c
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <string.h>
+#include <locale.h>
+#include <sys/types.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+
+
+#define LOCALE_ERROR        1
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+/* A function to determine if a directory entry is a directory */
+/* Check whether we have d_type in struct. If so use it.
+   If not, call stat() and check st_mode for file type. */
+BOOL isdir( const struct dirent *direntp)
+{
+#ifdef _DIRENT_HAVE_D_TYPE
+    if( direntp->d_type  == DT_DIR)
+#else
+    struct stat    statbuf;
+    stat(direntp->d_name, &statbuf);
+    if ( S_ISDIR(statbuf.st_mode)  )
+#endif
+        return TRUE;
+    else
+        return FALSE;
+}
+
+int scan_one_dir(const char* dirname )
+{
+    struct dirent **namelist;
+    int i, n;
+    char   pathname[PATH_MAX];
+
+    errno = 0;
+    if ( (n = scandir(dirname, &namelist, NULL, alphasort) ) < 0){
+        fatal_error(errno, "scandir");
+    }
+    for (i = 0; i < n; i++) {
+        if (strcmp(namelist[i]->d_name, ".") != 0
+            && strcmp(namelist[i]->d_name, "..") != 0) {
+            printf("%s/%s\n",dirname,namelist[i]->d_name);
+            if ( isdir(namelist[i]) ) {
+                sprintf(pathname, "%s/%s", dirname, namelist[i]->d_name);
+                scan_one_dir(pathname);
+            }
+        }
+        free(namelist[i]);
+    }
+    free(namelist);
+    return(EXIT_SUCCESS);
+}
+
+
+int main(int argc, char* argv[])
+{
+    if ( setlocale(LC_TIME, "")  == NULL )
+        fatal_error( LOCALE_ERROR,
+                 "setlocale() could not set the given locale");
+
+    if ( 1 == argc )
+        scan_one_dir(".");
+    else {
+        int i;
+        for (i = 1; i < argc; i++ ) {
+            printf("%s:\n", argv[i]);
+            scan_one_dir(argv[i]);
+            if ( i < argc-1 ) printf("\n");
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+// ./lsdirsorted_rec
+// Output:
+/*
+./Makefile
+./checksyscalls
+./checksyscalls.c
+./dircalls
+...
+*/
+
+/******************************************************************************/
+
+// nftwdemo.c
+#define _XOPEN_SOURCE 500
+#include <sys/types.h>      // lstat (2)
+#include <sys/stat.h>       // lstat (2), statx (2) required according to man page, S_ISDIR() ...
+#include <stdint.h>
+#include <fcntl.h>          // For AT_SYMLINK_NOFOLLOW, AT_FDCWD
+#include <time.h>           // ctime (3)
+#include <stdio.h>          // fprintf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <unistd.h>         // getopt (3) 
+#include <string.h>
+#include <errno.h>  
+#include <ftw.h>
+#include <limits.h>         // PATH_MAX
+
+#define  MAXOPENFD   20       /* Maximum number of file descriptors to open */
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+/*
+  Notes:
+  This program traverses the file hierarchy rooted at the filename given as
+  its command line argument, or if it is absent, rooted in the current working
+  directory. It accepts several different options, for the sole purpose of
+  showing how these options affect the behavior of nftw() and the values that
+  it passes to the function that it calls at each tree node.
+
+  To illustrate one simple application of nftw(), this program lists the
+  files that it finds, one per line, indented in proportion to its depth in
+  the tree, so that it implicitly shows which files are contained in which
+  directories.
+*/
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+static int display_info(const char *fpath, const struct stat *sb,
+             int tflag, struct FTW *ftwbuf)
+{
+    char  indent[PATH_MAX];                      /* A blank string */
+    const char *basename = fpath + ftwbuf->base; /* Filename of entry */
+    int   width          = 4*ftwbuf->level;      /* Length of leading path */
+
+    /* Fill indent with a string of 4*level blanks.   */
+    memset(indent, ' ', width);
+    indent[width] = '\0';
+
+    /* Print out blanks then filename (not full path).*/
+    printf("%s%-30s", indent, basename );
+
+    /* Check flags and print a message if need be.    */
+    if ( tflag == FTW_DNR )
+        printf(" (unreadable directory)");
+    else if ( tflag == FTW_SL )
+        printf(" (symbolic link)" );
+    else if ( tflag == FTW_SLN )
+        printf(" (broken symbolic link)" );
+    else if ( tflag == FTW_NS )
+        printf(" (stat failed) " );
+
+    printf("\n");
+    return 0;               /* Tell nftw() to continue. */
+}
+int main(int argc, char *argv[])
+{
+    // -c : change directory as it visits directories
+    // -p : do not follow symbolic links
+    // -d : do a post-order instead of pre-order (default)
+    // -m : do not cross mount points
+    int flags = 0;
+    int ch;
+    char options[] = ":dpm"; /* Three possible options */
+    opterr = 0;
+
+    while  (TRUE) {
+        if ( -1 == (ch = getopt(argc, argv, options)) )
+            break;
+        switch ( ch ) {
+        case 'd':  flags |= FTW_DEPTH;    break;
+        case 'p':  flags |= FTW_PHYS;     break;
+        case 'm':  flags |= FTW_MOUNT;    break;
+        default:   fprintf (stderr, "Bad option found.\n");
+            return 1;
+        }
+    }
+    errno = 0;
+    if (optind < argc)
+        while (optind < argc) {
+            if ( -1 == nftw(argv[optind], display_info, MAXOPENFD, flags))
+                fatal_error(errno, "nftw");
+            optind++;
+        }
+    else if ( -1 == nftw(".", display_info, MAXOPENFD, flags) )
+            fatal_error(errno, "nftw");
+    else
+        exit(EXIT_SUCCESS);
+}
+// ./nftwdemo
+// Output:
+/*
+.
+    showpwd.c
+    sortbysize.c
+    checksyscalls
+    dircalls
+*/
+
+/******************************************************************************/
+
+// nftw_manpage_example.c
+#define _XOPEN_SOURCE 500
+#include <ftw.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+static int
+display_info(const char *fpath, const struct stat *sb,
+            int tflag, struct FTW *ftwbuf)
+{
+    printf("%-3s %2d ",
+            (tflag == FTW_D) ?   "d"   : (tflag == FTW_DNR) ? "dnr" :
+            (tflag == FTW_DP) ?  "dp"  : (tflag == FTW_F) ?   "f" :
+            (tflag == FTW_NS) ?  "ns"  : (tflag == FTW_SL) ?  "sl" :
+            (tflag == FTW_SLN) ? "sln" : "???",
+            ftwbuf->level);
+
+    if (tflag == FTW_NS)
+        printf("-------");
+    else
+        printf("%7jd", (intmax_t) sb->st_size);
+
+    printf("   %-40s %d %s\n",
+            fpath, ftwbuf->base, fpath + ftwbuf->base);
+
+    return 0;           /* To tell nftw() to continue */
+}
+
+int
+main(int argc, char *argv[])
+{
+    int flags = 0;
+
+    if (argc > 2 && strchr(argv[2], 'd') != NULL)
+        flags |= FTW_DEPTH;
+    if (argc > 2 && strchr(argv[2], 'p') != NULL)
+        flags |= FTW_PHYS;
+
+    if (nftw((argc < 2) ? "." : argv[1], display_info, 20, flags)
+            == -1) {
+        perror("nftw");
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+// ./nftw_manpage_example
+// Output:
+/*
+d    0    4096   .                                        0 .
+f    1    4921   ./showpwd.c                              2 showpwd.c
+f    1    1224   ./sortbysize.c                           2 sortbysize.c
+f    1   21624   ./checksyscalls                          2 checksyscalls
+...
+*/
+
+/******************************************************************************/
+
+// scandirdemo.c
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <string.h>
+#include <sys/types.h>
+#include <dirent.h>         
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+/* A function to determine if a directory entry is a directory */
+/* Check whether we have d_type in struct. If so use it.
+   If not, call stat() and check st_mode for file type. */
+BOOL isdir(  const struct dirent *direntp)
+{
+#ifdef _DIRENT_HAVE_D_TYPE
+    if( direntp->d_type  == DT_DIR)
+#else
+    struct stat    statbuf;
+    stat(direntp->d_name, &statbuf);
+    if ( S_ISDIR(statbuf.st_mode) )
+#endif
+        return TRUE;
+    else
+        return FALSE;
+}
+
+int pickdir(  const struct dirent *direntp)
+{
+#ifdef _DIRENT_HAVE_D_TYPE
+    if( direntp->d_type  == DT_DIR)
+#else
+    struct stat    statbuf;
+    stat(direntp->d_name, &statbuf);
+    if ( statbuf.st_mode & S_IFDIR )
+#endif
+        return 1;
+    else
+        return 0;
+}
+
+/** dirsfirstsort(&d1, &d2) compares the direct structures pointed to by
+*   d1 and d2 and returns -1, 0, or 1 according to the sort order:
+*   if both are directories, return
+*       -1 if d1 <= d2 by the string collating order
+*        1 if d2 > d1 by the string collating order
+*   else
+*       -1  if d1 is a directory and d2 is not
+*        1  if d1 is not a directory and d2 is
+*   else if neither is a directory, return -1, 0, or 1 if d1 < d2,
+*         d1 == d2, or d1 > d2 respectively.
+*/
+int dirsfirstsort(const struct dirent **a, const struct dirent **b)
+{
+    if ( isdir(*a) )
+        if (! isdir(*b) )
+            return -1;
+        else
+            return (alphasort(a,b));
+    else
+        if ( isdir(*b) )
+            return 1;
+        else
+            return (alphasort(a,b));
+}
+
+void print( const struct dirent* direntp )
+{
+        printf("%s", direntp->d_name);
+        if ( isdir(direntp) )
+            printf("/");
+        printf("\n");
+}
+
+
+int scan_one_dir(const char* dirname, void (*process )(const struct dirent* ))
+{
+    struct dirent **namelist;
+    int n;
+
+    errno = 0;
+    if ( (n = scandir(dirname, &namelist, pickdir, dirsfirstsort) ) < 0){
+        fatal_error(errno, "scandir");
+    }
+
+    int i = 0;
+    while (i++ < n-1) {
+        process(namelist[i]);
+        free(namelist[i]);
+    }
+    free(namelist);
+    return(EXIT_SUCCESS);
+}
+
+
+int main(int argc, char* argv[])
+{
+    if ( 1 == argc )
+        scan_one_dir(".", print);
+    else {
+        int i = 1;
+        while ( i < argc ) {
+            printf("\n%s:\n", argv[i]);
+            scan_one_dir(argv[i++], print);
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+// ./scandirdemo []
+// Output: ../
+
+/******************************************************************************/
+
+// scandir_manpage_example.c
+#define _DEFAULT_SOURCE
+#include <dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+   struct dirent **namelist;
+   int n;
+
+   n = scandir(".", &namelist, NULL, alphasort);
+   if (n == -1) {
+       perror("scandir");
+       exit(EXIT_FAILURE);
+   }
+
+   while (n--) {
+       printf("%s\n", namelist[n]->d_name);
+       free(namelist[n]);
+   }
+   free(namelist);
+
+   exit(EXIT_SUCCESS);
+}
+// ./scandir_manpage_example
+// Output:
+/*
+temp.c
+temp
+sortbysize.c
+...
+*/
+
+/******************************************************************************/
+
+// showdirs_array.c
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <sys/types.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+
+#define  LIST_DIRS_FIRST  1
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void error_mssge(int code, const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+/* A function to determine if a directory entry is a directory */
+/* Check whether we have d_type in struct. If so use it.
+   If not, call stat() and check st_mode for file type. */
+BOOL isdir(  const struct dirent *direntp)
+{
+#ifdef _DIRENT_HAVE_D_TYPE
+    if( direntp->d_type  == DT_DIR)
+#else
+    struct stat    statbuf;
+    stat(direntp->d_name, &statbuf);
+    if ( S_ISDIR(statbuf.st_mode) )
+#endif
+        return TRUE;
+    else
+        return FALSE;
+}
+
+/** listdir_dirsfirst(dirstream) prints the filenames contained in the
+*   directory pointed to by dirstream, one per line, including . and ..,
+*   such that all entries that are directories are printed before any
+*   non-directory entries.
+*/
+
+void listdir(DIR *dirp, int flags)
+{
+    struct dirent *entry;     /* Pointer to directory entry structure      */
+    long int      pos;        /* Position of entry, returned by telldir()  */
+    long          *saved_positions; /* Array of saved positions.           */
+    long          *temp;
+    int           count = 0; /* To keep track of array size
+     */
+    int           i = 0;
+    int           MAX_ENTRIES = 512; /* Initial array size.
+     */
+
+    /* Allocate array in heap. */
+    saved_positions = (long*) malloc(sizeof(long)*MAX_ENTRIES);
+    while ( TRUE ) {
+        pos = telldir(dirp);       /* Save current position.     */
+        errno = 0;                 /* Try to read entry.         */
+        if ( NULL == (entry = readdir(dirp) ) && errno != 0 )
+            perror("readdir"); /* Error reading entry.       */
+        else if ( entry == NULL )
+            break;
+        else if ( flags & LIST_DIRS_FIRST ) {
+                if ( ! isdir(entry) ) {
+                    /* It's not a directory, so save it for printing later. */
+                    if ( count < MAX_ENTRIES ) {
+                        saved_positions[count++] = pos;
+                    }
+                    else {
+                        /* Out of memory. Allocate array 4 times larger. */
+                        MAX_ENTRIES= 4*MAX_ENTRIES;
+                        errno = 0;
+                        if ( NULL == (temp = (long*) realloc(saved_positions,
+                                    sizeof(long)*MAX_ENTRIES) ))
+                            fatal_error(errno, "Over limit on subdirectories");
+                        saved_positions = temp;
+                        saved_positions[count++] = pos;
+                    }
+                }
+                else
+                    printf("%s/\n", entry->d_name);
+            }
+        else
+            printf("%s/\n", entry->d_name);
+    }
+    /* Post-process list of saved filenames */
+    if ( count > 0 ) {
+        while( i < count ) {
+            seekdir(dirp, saved_positions[i]); /* Restore position in dirp. */
+            entry = readdir(dirp);             /* Read entry.               */
+            printf("%s\n", entry->d_name);     /* Print filename.           */
+            i++;
+        }
+    }
+    free(saved_positions);
+}
+
+int main(int argc, char *argv[])
+{
+    DIR   *dirp;
+    int    i;
+
+    if ( 1 == argc ) {   /* No arguments; use current working directory. */
+        errno = 0;
+        if ( ( dirp = opendir(".") ) == NULL )
+            fatal_error(errno, "opendir"); /* Could not open cwd. */
+        else
+           listdir( dirp ,1);
+    }
+    else {
+        i = 1;
+        /* For each command-line argument, call opendir() on it. */
+        while ( i < argc ) {
+            errno = 0;
+            if ( ( dirp = opendir(argv[i]) ) == NULL ) {
+                if ( errno == ENOTDIR )  /* It's not a directory. */
+                    printf("%s\n", argv[i] );
+                else  /* It's an error. */
+                    error_mssge(errno, argv[i]);
+            }
+            else {  /* A successful open of a directory */
+                printf("%s:\n", argv[i] );
+                listdir( dirp,1 );
+                closedir(dirp);
+            }
+            i++; /* Advance to next argument. */
+        }
+    }
+    return 0;
+}
+// ./showdirs_array
+// Output: 
+/*
+./
+../
+showpwd.c
+sortbysize.c
+...
+*/
+
+/******************************************************************************/
+
+// showdu.c
+#define _XOPEN_SOURCE 500
+#include <sys/types.h>      // lstat (2)
+#include <sys/stat.h>       // lstat (2), statx (2) required according to man page, S_ISDIR() ...
+#include <stdint.h>
+#include <fcntl.h>          // For AT_SYMLINK_NOFOLLOW, AT_FDCWD
+#include <time.h>           // ctime (3)
+#include <stdio.h>          // fprintf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <unistd.h>         // getopt (3) 
+#include <string.h>         // memset (3)
+#include <errno.h>  
+#include <ftw.h>
+#include <limits.h>         // PATH_MAX
+
+#define  MAXDEPTH  100       /* Maximum number of file descriptors to open */
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+// This walks the directory tree for each file argument, displaying file name
+// and type and accumulating total bytes in the tree.
+
+// THIS COUNTS NAMES OF THE SAME FILE MULTIPLE TIMES. IT NEEDS TO DETECT
+// WHEN A FILE HAS BEEN COUNTED ALREADY.
+
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+/*
+  totalsize is an array with an entry for each level in the tree.
+  It stores the total number of bytes for that level within the currently
+  processed tree. To be precise, if the level being processed is k,
+  then totalsize[k] contains the sum of the sizes of all files visited so
+  far in the tree rooted at level k-1 containing the files currently
+  visited, including those in all subtrees of those trees already visited.
+*/
+static  uintmax_t totalsize[MAXDEPTH];
+
+
+
+int file_usage(const char *fpath, const struct stat *sb,
+                 int tflag, struct FTW *ftwbuf)
+{
+    /*
+       We maintain two indices, prev_level and cur_level. At any time
+       cur_level is the level of the file currently being processed,
+       and if prev_level != -1, then it is the level of the file
+       processed immediately before the current file.
+    */
+    static int prev_level = -1;
+    int        cur_level;
+
+    /* the size of the current object. If it is a direcory, it includes the
+       sum of all descendants. This is what we print next to the name */
+    uintmax_t  cur_usage;
+
+    /* Store the level of the current file into cur_level */
+    cur_level = ftwbuf->level;
+    if ( cur_level >= MAXDEPTH ) {
+        fprintf(stderr, "Exceeded maximum depth.\n");
+        return -1;
+    }
+    /*
+       If prev_level == cur_level then we are visiting a file that is a
+       sibling of the one previously visited. In this case, we add its size
+       to the current total size for this level and we set cur_size to its
+       size.
+    */
+    if ( prev_level == cur_level ) {
+        cur_usage = sb->st_blocks/2;
+        totalsize[cur_level] += cur_usage;
+    }
+
+    /*
+       If prev_level > cur_level then we have just returned in the post-
+       order traversal to a directory all of whose children have been
+       visited. It can only be the case that prev_level == cur_level+1
+       but we do not need this fact.
+
+       The totalsize for the current level is now the sum of the previous
+       value of totalsize plus the size of the directory object itself
+       plus the sum of the sizes of all children just visited. We can
+       prove by induction that totalsize[prev_level] is exactly this sum,
+       since after each child of the current node was visited, it was
+       equal to the sum of all nodes in its tree plus those of its siblings
+       that had already been visited.
+
+       We set cur_size to totalsize[prev_level] + sb->st_blocks/2, which
+       is the size of this directory, and we add this to totalsize[cur_level].
+       We then zero out totalsize[prev_level]. This is explained in the notes.
+    */
+    else if ( prev_level > cur_level ) {
+        cur_usage    = totalsize[prev_level] + sb->st_blocks/2;
+        totalsize[cur_level] += cur_usage;
+        totalsize[prev_level] = 0;
+    }
+
+    /*
+       The last case is that prev_level < cur_level. This implies that we
+       descended from the previously visited node, which can only happen
+       during a post-order traversal when we reach a leaf node that is
+       leftmost in its tree (or the first node to be visited in that tree).
+       In this case we reset the totalsize for that level to 0 and add
+       that file's size to it. Equivalently, we set totalsize[cur_level]
+       to the size of that object.
+    */
+    else {
+        cur_usage = sb->st_blocks/2;
+        totalsize[cur_level] = cur_usage;
+    }
+
+    /* Print out the size and then the name of the file */
+    printf("%ju\t%s", cur_usage, fpath);
+
+    /* now make prev_level the current level */
+    prev_level = cur_level;
+
+    /* Check flags and print a message if need be */
+    if ( tflag == FTW_DNR )
+        printf(" (unreadable directory)");
+    else if ( tflag == FTW_SL )
+        printf(" (symbolic link)" );
+    else if ( tflag == FTW_SLN )
+        printf(" (broken symbolic link)" );
+    else if ( tflag == FTW_NS )
+        printf("stat failed " );
+    printf("\n");
+
+   return 0;           /* To tell nftw() to continue */
+}
+
+
+int main(int argc, char *argv[])
+{
+    int flags = FTW_DEPTH | FTW_PHYS | FTW_MOUNT;
+    int status;
+    int i = 1;
+
+    if ( argc < 2 )  {
+        memset( totalsize, 0, MAXDEPTH*sizeof(uintmax_t));
+        if ( 0 != (status = nftw(".", file_usage, 20, flags) ) )
+           fatal_error(status, "nftw");
+    }
+    else
+        while (i < argc) {
+            memset( totalsize, 0, MAXDEPTH*sizeof(uintmax_t));
+            if ( 0 != ( status = nftw(argv[i], file_usage, MAXDEPTH, flags)))
+                fatal_error(status, "nftw");
+            else
+                i++;
+        }
+    exit(EXIT_SUCCESS);
+}
+
+// ./showdu [file file ...]
+// Output:
+/*
+8       ./showpwd.c
+4       ./sortbysize.c
+28      ./checksyscalls
+...
+*/
+
+/******************************************************************************/
+
+// showdu2.c
+// DOESN'T WORK BECAUSE I TOOK OUT "hash" library but I didn't try to fix code
+#define _XOPEN_SOURCE 500
+#include <sys/types.h>      // lstat (2)
+#include <sys/stat.h>       // lstat (2), statx (2) required according to man page, S_ISDIR() ...
+#include <stdint.h>
+#include <fcntl.h>          // For AT_SYMLINK_NOFOLLOW, AT_FDCWD
+#include <time.h>           // ctime (3)
+#include <stdio.h>          // fprintf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <unistd.h>         // getopt (3) 
+#include <string.h>         // memset (3)
+#include <errno.h>  
+#include <ftw.h>
+#include <limits.h>         // PATH_MAX
+
+#define  MAXDEPTH  100
+#define  INITIAL_HASH_SIZE      1024
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+
+/*
+  total_usage is an array with an entry for each level in the tree.
+  It stores the total number of bytes for that level within the currently
+  processed tree. To be precise, if the level being processed is k,
+  then total_usage[k] contains the sum of the disk usage of all files visited so
+  far in the tree rooted at level k-1 containing the files currently
+  visited, including those in all subtrees of those trees  already visited.
+*/
+static  uintmax_t total_usage[MAXDEPTH];  /* total disk usage for level n   */
+static  hash_table  visited;              /* Set of inodes already visited  */
+
+BOOL  was_visited(ino_t inode, dev_t dev)
+{
+    hash_val  val = inode * dev ;
+    return is_in_hash(visited, val);
+}
+
+BOOL  mark_visited(ino_t inode, dev_t dev)
+{
+    hash_val  val = inode * dev ;
+    return insert_hash(&visited, val);
+}
+
+int file_usage(const char *fpath, const struct stat *sb,
+                 int tflag, struct FTW *ftwbuf)
+{
+    /*
+       We maintain two indices, prev_level and cur_level. At any time
+       cur_level is the level of the file currently being processed,
+       and if prev_level != -1, then it is the level of the file
+       processed immediately before the current file.
+    */
+    static int prev_level = -1;
+    int        cur_level;
+    BOOL       already_visited = FALSE;
+
+    /* the size of the current object. If it is a direcory, it includes the
+       sum of all descendants. This is what we print next to the name */
+    uintmax_t  cur_usage;
+
+    /* Store the level of the current file into cur_level */
+    cur_level = ftwbuf->level;
+    if ( cur_level >= MAXDEPTH ) {
+        fprintf(stderr, "Exceeded maximum depth.\n");
+        return -1;
+    }
+
+    /*
+       If prev_level == cur_level then we are visiting a file that is a
+       sibling of the one previously visited. In this case, we add its size
+       to the current total size for this level and we set cur_size to its
+       size.
+    */
+    if ( prev_level == cur_level ) {
+        if ( sb->st_nlink == 1 ) {
+            cur_usage = sb->st_blocks/2;
+            total_usage[cur_level] += cur_usage;
+        }
+        else {
+            if ( ! ( already_visited = was_visited(sb->st_ino, sb->st_dev) )) {
+                cur_usage = sb->st_blocks/2;
+                total_usage[cur_level] += cur_usage;
+                if ( ! mark_visited(sb->st_ino, sb->st_dev) )
+                    fatal_error(-1, "Could not insert inode into hash table");
+            }
+        }
+    }
+
+    /*
+       If prev_level > cur_level then we have just returned in the post-
+       order traversal to a directory all of whose children have been
+       visited. It can only be the case that prev_level == cur_level+1
+       but we do not need this fact.
+
+       The total_usage for the current level is now the sum of the previous
+       value of total_usage plus the size of the directory object itself
+       plus the sum of the sizes of all children just visited. We can
+       prove by induction that total_usage[prev_level] is exactly this sum,
+       since after each child of the current node was visited, it was
+       equal to the sum of all nodes in its tree plus those of its siblings
+       that had already been visited.
+
+       We set cur_size to total_usage[prev_level] + sb->st_blocks/2, which
+       is the size of this directory, and we add this to total_usage[cur_level].
+       We then zero out total_usage[prev_level]. This is explained in the notes.
+    */
+    else if ( prev_level > cur_level ) {
+        cur_usage    = total_usage[prev_level] + sb->st_blocks/2;
+        total_usage[cur_level] += cur_usage;
+        total_usage[prev_level] = 0;
+    }
+
+    /*
+       The last case is that prev_level < cur_level. This implies that we
+       descended from the previously visited node, which can only happen
+       during a post-order traversal when we reach a leaf node that is
+       leftmost in its tree (or the first node to be visited in that tree).
+       In this case we reset the total_usage for that level to 0 and add
+       that file's size to it. Equivalently, we set total_usage[cur_level]
+       to the size of that object.
+    */
+    else {
+        if ( sb->st_nlink == 1 || S_ISDIR(sb->st_mode) ) {
+            cur_usage = sb->st_blocks/2;
+            total_usage[cur_level] = cur_usage;
+        }
+        else {
+            if ( !(already_visited = was_visited(sb->st_ino, sb->st_dev) )) {
+                cur_usage = sb->st_blocks/2;
+                total_usage[cur_level] = cur_usage;
+                if ( ! mark_visited(sb->st_ino, sb->st_dev) )
+                    fatal_error(-1, "Could not insert inode into hash table");
+            }
+        }
+    }
+
+    if ( ! already_visited ) {
+        /* Print out the size and then the name of the file */
+        printf("%ju\t%s", cur_usage, fpath);
+        /* Check flags and print a message if need be */
+        if ( tflag == FTW_DNR )
+            printf(" (unreadable directory)");
+        else if ( tflag == FTW_SL )
+            printf(" (symbolic link)" );
+        else if ( tflag == FTW_SLN )
+            printf(" (broken symbolic link)" );
+        else if ( tflag == FTW_NS )
+            printf("stat failed " );
+        printf("\n");
+    }
+    /* Now make prev_level the current level. */
+    prev_level = cur_level;
+
+
+    return 0;           /* To tell nftw() to continue */
+}
+
+
+int main(int argc, char *argv[])
+{
+    int flags = FTW_DEPTH | FTW_PHYS /*| FTW_MOUNT*/;
+    int status;
+    int i = 1;
+
+    if ( argc < 2 )  {
+        init_hash(&visited, INITIAL_HASH_SIZE);
+        memset( total_usage, 0, MAXDEPTH*sizeof(uintmax_t));
+        if ( 0 != (status = nftw(".", file_usage, 20, flags) ) )
+           fatal_error(status, "nftw");
+        free_hash(&visited);
+    }
+    else
+        while (i < argc) {
+            init_hash(&visited, INITIAL_HASH_SIZE);
+            memset( total_usage, 0, MAXDEPTH*sizeof(uintmax_t));
+            if ( 0 != ( status = nftw(argv[i], file_usage, MAXDEPTH, flags)))
+                fatal_error(status, "nftw");
+            else {
+                i++;
+                free_hash(&visited);
+            }
+        }
+    exit(EXIT_SUCCESS);
+}
+// ./showdu2.c
+// Output:
+/**
+
+ */
+
+/******************************************************************************/
+
+// showpwd.c
+//: Implements pwd across mount points
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <string.h>
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <unistd.h>         // chdir (2)
+#include <sys/types.h>
+#include  <sys/stat.h>
+
+typedef int BOOL;
+#define TRUE 1
+#define FALSE 0
+
+void error_mssge(int code, const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+/* A structure to store an (inode number, device ID) pair */
+typedef struct device_inode_pair
+{
+    dev_t  dev;
+    ino_t  ino;
+} dev_ino;
+
+
+/*****************************************************************************
+                          Utility Function Prototypes
+*****************************************************************************/
+
+/* are_samefile(di1, di2) returns TRUE iff the device-inode pair di1 is equal
+   to device inode pair di2. */
+BOOL  are_samefile(dev_ino f1, dev_ino f2)
+{
+   return ( f1.ino == f2.ino && f1.dev == f2.dev );
+}
+
+
+/*  get_dev_ino() gets the device id and the inode number of the file whose
+    pathname is given in its first argument.
+    Returns 0 if successful, or an err value if it fails.
+*/
+void  get_dev_ino( const char *fname, dev_ino *dev_inode)
+{
+    struct stat sb;
+    errno = 0;
+    if ( -1 == lstat( fname , &sb )  )
+        fatal_error(errno, "Cannot stat ");
+    dev_inode->dev  = sb.st_dev;
+    dev_inode->ino  = sb.st_ino;
+}
+
+
+/* get_filename(e) returns the filename of the directory entry e
+  in the current working directory. */
+char* get_filename( dev_ino child_entry)
+{
+    DIR           *dir_ptr;     /* The directory to be opened         */
+    struct dirent *direntp;     /* The dirent for each entry
+ */
+    dev_ino       this_entry;   /* The dev_ino pair for the entry     */
+    char          errmssge[256];/* To store error messages
+ */
+    int           len;          /* Length of a string
+ */
+    char*         fname;        /* malloc-ed name to return to caller */
+
+    errno = 0;
+    dir_ptr = opendir( "." );
+    if ( dir_ptr == NULL )
+        fatal_error(errno, "opendir" );
+
+    /* Search through the current working directory for a file whose
+       inode number and device ID are that of entry.*/
+    while ( ( direntp = readdir( dir_ptr ) ) != NULL ) {
+        errno = 0;
+        get_dev_ino(direntp->d_name, &this_entry);
+
+        /* If this entry matches, we found the file. */
+        if ( are_samefile( this_entry, child_entry) ) {
+            /* Copy the entry's d_name into a malloc-ed fname. */
+            len = strlen(direntp->d_name);
+            errno = 0;
+            if ( NULL == (fname = malloc(len+1)) )
+                fatal_error(errno, "malloc");
+            strncpy(fname, direntp->d_name, len);
+            closedir( dir_ptr );
+            return fname;
+        }
+    }
+    /* If we reach here, there is no matching entry in this directory */
+    sprintf(errmssge, "i-number %lu not found.\n", child_entry.ino);
+    error_mssge(-1, errmssge);
+    return NULL;
+}
+
+
+int main(int argc, char* argv[])
+{
+    dev_ino     current;            /* dev-ino pair for node to find        */
+    dev_ino     root;               /* dev-ino pair for root directory      */
+    char        pathname[PATH_MAX]; /* Buffer to store pathname             */
+    char        *dirname;           /* Next component of pathname to find   */
+    ssize_t     front;              /* Leftmost position of current pathname*/
+    ssize_t     namelength;         /* Length of next component in pathname */
+
+    get_dev_ino("/", &root );
+    get_dev_ino( ".", &current);
+    front = PATH_MAX-1;
+    pathname[PATH_MAX-1] = '\0';
+
+    while ( !are_samefile(current, root)) {
+        /* go up to parent directory */
+        chdir( ".." );
+        /* Search in the parent directory for the fileame of this_inode. */
+        if ( NULL == (dirname = get_filename(current)) )
+            fatal_error(-1,
+                   "Could not find entry in .. for current directory.");
+        /* If successful, write this name to the left of the current path. */
+        namelength = strlen(dirname);
+
+        /* Check if the new path is too long. If so, fill with dots instead
+           and report the error. */
+        if ( front - namelength <= 0 ) {
+            memset(&(pathname[0]), '.', front);
+            front = 0;
+            error_mssge(ENAMETOOLONG, "Error");
+            break;
+        }
+        else {
+            front = front - namelength;
+            memcpy(pathname+front, dirname, namelength);
+        }
+        /* Free the memory allocated by get_filename for this string. */
+        free(dirname);
+        pathname[front-1] = '/';
+        front--;
+        get_dev_ino(".", &current);
+    }
+    printf("%s\n", &(pathname[front]));
+    return 0;
+}
+// ./showpwd [-v]
+// Output: /data/biocs/b֯^/student.accounts/brandon.cohen42/chapter08
+
+/******************************************************************************/
+
+// sortbysize.c
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#include <stdio.h>          // printf (3), perror (3)
+#include <stdlib.h>         // exit (3)
+#include <errno.h> 
+#include <dirent.h>         // opendir (3), readdir (3)
+#include <sys/types.h>
+#include <sys/stat.h>
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+int sortsize(const struct dirent **a, const struct dirent **b)
+{
+    struct stat a_sb, b_sb;
+    stat((*a)->d_name, &a_sb);
+    stat((*b)->d_name, &b_sb);
+    if ( a_sb.st_size < b_sb.st_size)
+        return -1;
+    else if ( a_sb.st_size > b_sb.st_size)
+        return  1;
+    else
+        return  0;
+}
+
+void print( const struct dirent* direntp )
+{
+        printf("%s", direntp->d_name);
+        printf("\n");
+}
+
+
+int scan_one_dir(const char* dirname, void (*process )(const struct dirent* ))
+{
+    struct dirent **namelist;
+    int n;
+
+    errno = 0;
+      if ( (n = scandir(dirname, &namelist, NULL, sortsize) ) < 0){
+        fatal_error(errno, "scandir");
+    }
+
+    int i = 0;
+    while (i++ < n-1) {
+        process(namelist[i]);
+        free(namelist[i]);
+    }
+    free(namelist);
+    return(EXIT_SUCCESS);
+}
+
+
+int main(int argc, char* argv[])
+{
+    if ( 1 == argc )
+        scan_one_dir(".", print);
+    else {
+        int i = 1;
+        while ( i < argc ) {
+            printf("\n%s:\n", argv[i]);
+            scan_one_dir(argv[i++], print);
+        }
+    }
+    exit(EXIT_SUCCESS);
+}
+// ./sortbysize
+// Output: 
+/*
+dircalls.c
+Makefile
+lsdir3.c
+...
+*/
+
+/******************************************************************************/

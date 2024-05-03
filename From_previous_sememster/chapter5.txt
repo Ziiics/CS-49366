@@ -1,0 +1,316 @@
+/*
+Man Pages
+       1   Executable programs or shell commands, command line tools
+                man, vim, more, less, apropos
+       2   System calls (functions provided by the kernel), written in C code
+                open, statx, stat, chmod, time, getpid()
+       3   Library calls (functions within program libraries), built from system calls
+                printf, scanf, free, 
+       4   Special files (usually found in /dev)
+       5   File formats and conventions, e.g. /etc/passwd
+       6   Games
+       7   Miscellaneous (including macro packages and conven‐
+           tions), e.g. man(7), groff(7), man-pages(7)
+       8   System  administration  commands  (usually only for
+           root)
+       9   Kernel routines [Non standard]
+
+man will search in the order of the sections and only display the first
+one even if there are more pages in later sections
+*/
+
+/*
+SECTION 2
+int open(const char *pathname, int flags);
+int open(const char *pathname, int flags, mode_t mode);
+    Open file at pathname. If file does not exist, flag O_CREAT can crete the file
+    Returns a file descriptor, nonengative integer, used for write(2), lseek(2), fcntl(2), etc.
+    Returns -1 if an error occured and errno is set appropriately
+FLAGS
+    O_RDONLY = read only
+    O_WRONLY = write only
+    O_RDWR = read and write only
+    O_CREAT = if pathanme does not exist, create it as a regualr file
+    O_TRUNC = If  the  file  already exists and the access mode allows writing 
+              (i.e., is O_RDWR or O_WRONLY) it will  be  truncated  to length 0.
+    O_APPEND = append mode so offset is always at end of file for writing
+    Must include at least one access mode: O_RDONLY, O_WRONLY, O_RDWR
+PERMISSIONS mode_t modes (man chmod)
+    S_IRUSR (owner read), S_IWUSR (owner write), S_IXUSR (user execute)
+    S_IRGRP (group read), S_IWGRP (group write), S_IXGRP (group execute)
+    S_IROTH (other read), S_IWOTH (other write), S_IXOTH (group execute)
+
+    #include <sys/stat.h>
+    int chmod(const char *pathname, mode_t mode);
+
+ssize_t read(int fd, void *buf, size_t count);
+    Reads up to count bytes from file fd and puts it into the buffer buf.
+    Buffer: char buffer[BUFFER_SIZE];
+    Read starts at file offset and if file offset is at or past the end of the file,
+    no bytes are read and read returns 0. If count is zero, returns 0.
+    
+    On success, the number of bytes read is returned  (zero  indicates
+    end  of  file),  and the file position is advanced by this number.
+    It is not an error if this number is smaller than  the  number  of
+    bytes requested; this may happen for example because fewer bytes
+    are actually available right now (maybe because we were close to
+    end-of-file, or because read() was interrupted by a signal.
+    On error, -1 is returned, and errno is set appropriately.  
+
+ssize_t write(int fd, const void *buf, size_t count);
+    Writes up to count bytes from the buffer to the file fd. The number of bytes
+    can be less thn count.
+    On success, the number of bytes written is returned.  On error, -1
+    is returned, and errno is set. 
+
+int close(int fd);
+    Closes a file descriptor. Returns 0 on success. ON error, -1 is returned and
+    errno is set appropriately.
+
+int fsync(int fd);
+    Transfers all data that is held in buffers and are associated with a file descriptor
+    will be applied. On success, these system calls return zero.  On error, -1  is  re‐
+    turned, and errno is set appropriately.
+
+SECTION 3
+int rand(void);
+    Returns a pseduo-random integer from 0 to RAND_MAX
+
+void *malloc(size_t size);
+    Allocates size bytes and returns a pointer to the allocated memory
+    If size is 0, then malloc returns either NULL or a pointer value that can later be passed 
+    to free
+
+void free(void *ptr);
+    Frees the memory space pointed to by ptr
+    buffer = malloc((size_t) bufsize);
+
+*/
+
+/******************************************************************************/
+
+// copy.c
+#define _GNU_SOURCE
+#include <stdio.h>          // fprintf (3), sprintf (3)
+#include <stdlib.h>         // exit (3)
+#include <string.h>         // basename (3)
+#include <errno.h>          // errno
+#include <fcntl.h>          // open (2)
+#include <unistd.h>         // read (2), write (2), close (2)
+#include <sys/stat.h>       // open (2)
+
+#ifndef BUFFER_SIZE
+    #define BUFFER_SIZE      4096
+#endif
+#define MESSAGE_SIZE   512
+#define PERMISSIONS    S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH  /*rw-rw-r-- */
+
+void usage_error(const char *msg) {
+    fprintf(stderr, "Usage Error: %s\n", msg);
+    exit(EXIT_FAILURE);
+}
+
+void fatal_error(int code, const char *msg) {
+    fprintf(stderr, "Fatal Error: %s\n", msg);
+    exit(code);
+}
+
+int main(int argc, char *argv[]) {
+    int source_fd;
+    int target_fd;
+    int num_bytes_read;
+    int num_bytes_written;
+    mode_t permissions = PERMISSIONS;
+    char buffer[BUFFER_SIZE];
+    char message[MESSAGE_SIZE];
+
+    /* Check for correct usage. */
+    if (argc != 3) {
+        sprintf(message, "%s source destination", basename(argv[0]));
+        usage_error(message);
+    }
+
+    /* Open source file for reading. */
+    errno = 0;
+    if ((source_fd = open(argv[1], O_RDONLY)) == -1) {
+        sprintf(message, "unable to open %s for reading", argv[1]);
+        fatal_error(errno, message);
+    }
+
+    /* Open target file for writing. */
+    errno = 0;
+    if ((target_fd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, permissions)) == -1) {
+        sprintf(message, "unable to open %s for writing", argv[2]);
+        fatal_error(errno, message);
+    }
+
+    /* Start copying: Transfer BUFFER_SIZE bytes at a time from source_fd to target_fd. */
+    errno = 0;
+    while ((num_bytes_read = read(source_fd, buffer, BUFFER_SIZE)) > 0) {
+        errno = 0;
+        num_bytes_written = write(target_fd, buffer, num_bytes_read);
+        if (errno != 0)
+            fatal_error(errno, "copy");
+        else if (num_bytes_written != num_bytes_read) {
+            sprintf(message, "write error to %s\n", argv[2]);
+            fatal_error(-1, message);
+        }
+        errno = 0;
+    }
+
+    if (num_bytes_read == -1)
+        fatal_error(errno, "error reading");
+
+    /* Close files. */
+    errno = 0;
+    if (close(source_fd) == -1) {
+        sprintf(message, "error closing source file %s", argv[1]);
+        fatal_error(errno, message);
+    }
+
+    errno = 0;
+    if (-1 == fsync(target_fd)) /* Flush data to device. */
+        /* Error trying to flush data to device. Just exit. */
+        fatal_error(errno, "fsync");
+
+    /* fsync() was successful. */
+    errno = 0;
+    if (close(target_fd) == -1) {
+        sprintf(message, "error closing target file %s", argv[2]);
+        fatal_error(errno, message);
+    }
+
+    return 0;
+}
+// ./copy this_file.txt to_this_one.txt
+
+
+// DOESN'T WORK
+// copy2.c
+#define _GNU_SOURCE
+#include <stdio.h>          // fprintf (3), sprintf (3)
+#include <stdlib.h>         // exit (3), malloc (3)
+#include <string.h>         // basename (3)
+#include <errno.h>          // errno
+#include <fcntl.h>          // open (2)
+#include <unistd.h>         // read (2), write (2), close (2)
+#include <sys/stat.h>       // open (2)
+
+
+#define MESSAGE_SIZE   512
+#define PERMISSIONS    S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH  /*rw-rw-r-*/
+
+int main(int argc, char *argv[])
+{
+    int     source_fd;
+    int     target_fd;
+    int     num_bytes_read;
+    int     num_bytes_written;
+    mode_t  permissions = PERMISSIONS;
+    char    message[MESSAGE_SIZE];
+    int     retval;
+    long    bufsize;
+    char    *buffer;
+
+    /* Check for correct usage.
+ */
+    if ( argc != 4 ){
+        sprintf(message,"%s source destination buffer-size", basename(argv[0]));
+        usage_error(message);
+    }
+
+    /* Open source file for reading.
+ */
+    errno = 0;
+    if ( (source_fd = open(argv[1], O_RDONLY)) == -1 ) {
+        sprintf(message, "unable to open %s for reading", argv[1]);
+        fatal_error(errno, message);
+    }
+
+    /* Open target file for writing.
+ */
+    errno = 0;
+    if ( (target_fd = open( argv[2], O_WRONLY|O_CREAT|O_TRUNC,
+                            permissions) ) == -1 ) {
+        sprintf(message, "unable to open %s for writing", argv[2]);
+        fatal_error(errno, message);
+    }
+
+    /* Get the buffersize.
+ */
+    if ( (retval = get_long(argv[3], NON_NEG_ONLY, &bufsize, message )) < 0)
+        fatal_error(retval, message);
+
+    buffer = malloc((size_t) bufsize);
+    if ( buffer == NULL )
+        fatal_error(errno, "malloc");
+
+    /* Start copying:
+       Transfer BUFFER_SIZE bytes at a time from source_fd to target_fd.    */
+      errno = 0;
+      while ( (num_bytes_read = read(source_fd , buffer, bufsize)) > 0 ){
+          errno = 0;
+          num_bytes_written = write( target_fd, buffer, num_bytes_read ) ;
+          if ( errno != 0 )
+              fatal_error(errno, "copy");
+          else
+              if ( num_bytes_written  != num_bytes_read) {
+                  sprintf(message,"write error to %s\n", argv[2]);
+                  fatal_error(-1, message);
+              }
+          errno = 0;
+      }
+      if (num_bytes_read == -1)
+          fatal_error(errno, "error reading");
+
+      /* Close files.
+ */
+      errno = 0;
+      if ( close(source_fd) == -1 ) {
+          sprintf(message, "error closing source file %s", argv[1]);
+          fatal_error(errno, message);
+      }
+      if ( close(target_fd) == -1 ) {
+          sprintf(message, "error closing target file %s", argv[2]);
+          fatal_error(errno, "error closing target file");
+      }
+      return 0;
+  }
+// copy2.c
+
+/******************************************************************************/
+
+// libcalloverhead.c
+// To measure library function
+#include <stdlib.h>     // rand()
+
+int main(int argc, char* argv[])
+{
+    int i;
+    for ( i = 1; i < 100000000; i++ )
+        rand();
+    return 0;
+}
+// ./libcalloverhead
+
+/******************************************************************************/
+
+// syscalloverhead.c
+// Call uname sufficiently many times to see cpu usage 
+// uname only uses syscall and nothing else 
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/utsname.h>
+
+int main(int argc, char* argv[])
+{
+    int i;
+    struct utsname data;
+
+    for ( i = 1; i < 100000000; i++ )
+        uname(&data);
+    return 0;
+}
+// ./syscalloverhead
+
+
