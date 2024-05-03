@@ -1,0 +1,215 @@
+------------------------------------------------------------------------------------
+Disks and Disk Partitions
+
+The tracks is basically a cylinder.
+Each secor is a section, but a block can be multiple sector.
+It actually takes very long for the toner to change tracks when it need to look for the data  \\we call this seeking), 
+  so instead of placing memory to different tracks in the same cylinder,
+  it actually keep file in different cylinder but the same tracks.
+
+Device driver: is the one that connect the program to the devices (kenerl addressabel on kernel only).
+The job is to talk to the devices and to the kernel.
+- upper half
+- lower half
+
+Most file system stays on the disks.
+We can check the file or memeory on the disks on /proc
+
+The filesystem we are talking about is focussin on the ext file.
+
+The goal is to implement the stat() command
+
+Inode Table: a table of pointer which points to different blocks of file. 
+Usually Indone have 15 blocks.
+- The first 12 is direct blocks
+- The 13th is single indirect blocks (4MB)
+- The 14th is double indirect blocks (4GB)
+- The 15th is triple indirect blocks (4TB)
+The reason of block groups is to keep the block closer to inode and make it faster to seek.
+
+When creating file, the steps are to
+1. Check if it is still valid
+2. When make the file, the first thing is does is to make the inode
+3. fills in the inode with the file status.
+4. then the directory islinked to inode
+5. the the indoe is linked to the blocks on the table.
+
+VFS (Virtual )
+
+IO Block: the block it uses to transfer data.
+
+Symbolic link do not have data blocsk, it doesn't require access mode.
+stat() without option telling you the link
+stat() with option tell you about the target of the links
+
+
+
+
+
+
+When we are trying to check the stat() it doesn't show the birth date.
+statx() different with stat() is that it gives a more in depth information fo a file.
+------------------------------------------------------------------------------------
+int statx(int dirfd, const char *pathname, int flags, unsigned int mask, struct statx *statxbuf);
+
+  struct statx {
+    __u32 stx_mask;        /* Mask of bits indicating filled fields */
+    __u32 stx_blksize;     /* Block size for filesystem I/O */
+    __u64 stx_attributes;  /* Extra file attribute indicators */
+    __u32 stx_nlink;       /* Number of hard links */
+    __u32 stx_uid;         /* User ID of owner */
+    __u32 stx_gid;         /* Group ID of owner */
+    __u16 stx_mode;        /* File type and mode */
+    __u64 stx_ino;         /* Inode number */
+    __u64 stx_size;        /* Total size in bytes */
+    __u64 stx_blocks;      /* Number of 512B blocks allocated */
+    __u64 stx_attributes_mask;
+    /* Mask to show what's supported in stx_attributes */
+
+    /* The following fields are file timestamps */
+    struct statx_timestamp stx_atime;  /* Last access */
+    struct statx_timestamp stx_btime;  /* Creation */
+    struct statx_timestamp stx_ctime;  /* Last status change */
+    struct statx_timestamp stx_mtime;  /* Last modification */
+
+    /* If this file represents a device, then the next two fields contain the ID of the device */
+    __u32 stx_rdev_major;  /* Major ID */
+    __u32 stx_rdev_minor;  /* Minor ID */
+
+    /* The next two fields contain the ID of the device containing the filesystem where the file resides */
+    __u32 stx_dev_major;   /* Major ID */
+    __u32 stx_dev_minor;   /* Minor ID */
+  };
+------------------------------------------------------------------------------------
+- the __u32 and __u64 type is the unsigned integer given for this variable.
+- when there is __ (double underscore) means that the explanation of the type is defined in one of the file in the OS
+- the wya to print these value will be %lu (unsinged long) or %llu (unsigned long)
+- we have to look back at stx_mask after doen with the file to see how much the space fo the data have been filled.
+- stx_attributes won't be needed for the stat() that we want to implement.
+
+So, when you are coding with the C, even if as example the long supposed to be 8 bytes, it can be only 4 bytes. SO what C language do is that user this typing ways to ensure the space is reserved for them.
+
+The reason why is because when you are keeping things in the kernel memory, it needs a static data, menaing that the size have to be fixed, and the c-int or c-long doen't provide that.
+
+
+
+
+
+Different kidn of pathname when calling statx() 
+- Absolute Pathname: Start pathname with /, ignore dirfd.
+- Relative Pathname: Start pathname without /, use AT_FDCWD for dirfd.
+- Directory-Relative Pathname: Use valid directory dirfd.
+- File Descriptor: Use empty pathname and AT_EMPTY_PATH flag.
+
+
+------------------------------------------------------------------------------------
+STATX_TYPE Want stx_mode & S_IFMT
+STATX_MODE Want stx_mode & ~S_IFMT
+STATX_NLINK Want stx_nlink
+STATX_UID Want stx_uid
+STATX_GID Want stx_gid
+STATX_ATIME Want stx_atime
+STATX_MTIME Want stx_mtime
+STATX_CTIME Want stx_ctime
+STATX_INO Want stx_ino
+STATX_SIZE Want stx_size
+STATX_BLOCKS Want stx_blocks
+STATX_BASIC_STATS [All of the above]    // to call everything except the birth time
+STATX_BTIME Want stx_btime
+STATX_ALL [All currently available fields]  // to call all
+------------------------------------------------------------------------------------
+AT_SYMLINK_NOFOLLOW is the flag that decide whether it follows the link or the target
+- when its on, it followw the link
+- when not, it follow the target file
+
+
+
+------------------------------------------------------------------------------------
+  if ( statx(AT_FDCWD, pathtofile, flags, mask, &statxbuf) == -1 )
+    /* Handle error */
+  else {
+  --snip--
+  if ( statxbuf.stx_mask & STATX_SIZE )
+    /* Print statxbuf.stx_size */
+}
+------------------------------------------------------------------------------------
+- statx(AT_FDCWD, pathtofile, flags, mask, &statxbuf): This line calls the statx() system call to retrieve metadata about the file specified by pathtofile. Here's what each argument represents:
+- AT_FDCWD: Indicates that the current working directory should be used as the reference directory.
+    pathtofile: The path to the file for which metadata is being retrieved.
+    flags: Additional flags that control the behavior of the statx() call.
+    mask: Specifies which fields of the statxbuf structure should be filled in with data.
+    &statxbuf: Pointer to the statxbuf structure where the metadata will be stored.
+      if ( statx(AT_FDCWD, pathtofile, flags, mask, &statxbuf) == -1 ): This if statement checks if the statx() call failed. If it returns -1, it means an error occurred, and the program needs to handle the error accordingly.
+- else { --snip-- }: If the statx() call succeeds, the program proceeds with the code inside the else block.
+- if ( statxbuf.stx_mask & STATX_SIZE ): This if statement checks if the STATX_SIZE flag is set in the stx_mask field of the statxbuf structure. If STATX_SIZE is set, it means that the size of the file is available in the stx_size field of the statxbuf structure.
+- /* Print statxbuf.stx_size */: If the size information is available (STATX_SIZE flag is set), the code proceeds to print the size of the file, which is stored in the stx_size field of the statxbuf structure.
+
+
+
+------------------------------------------------------------------------------------
+ssize_t readlink(const char *pathname, char *buf, size_t bufsiz);
+------------------------------------------------------------------------------------
+- the size we willl need to give to the buf is should be the maximum size of the path name.
+- to know the size, it will be included in the user direcotry, in the <limits.h>
+
+
+
+Designing a spl_stat command
+Initialize variables such as the mask and flags. For the default behavior, the mask should be STATX_BASIC_STATS | STATX_BTIME.
+2. Initialize a flag variable named report_link_data to contain the flag
+AT_SYMLINK_NOFOLLOW.
+3. Localize the program by calling setlocale().
+4. Parse the command line for options and arguments. If the -L option
+is found, set report_link_data to 0, so that the program reports on
+link targets instead of links.
+5. If the command line is incorrect, exit with a usage message.
+6. For each pathname found on the command line,
+• Call statx(AT_FDCWD, pathname, report_link_data, mask, &statx_buffer)
+• If the call was not successful, print an error message and skip to the next file.
+• If the call was successful, determine if pathname is a symbolic link. If it is, and report_link_data is 0, print the name of the target. If it is but report_link_data is not 0, print the link and target in the form pathname -> link-target. If pathname is not a symbolic link, just print its name. In all cases, print the
+fields of statx_buffer afterward.
+
+
+
+We now want to use the statfs, but they don't are only avaoilable for the LINUX (always remember to check SEE ASLO first).
+So we decided to use statvfs() instead
+------------------------------------------------------------------------------------
+struct statvfs {
+  unsigned long f_bsize;    /* Filesystem block size */
+  unsigned long f_frsize;   /* Fragment size */
+  fsblkcnt_t f_blocks;      /* Size of fs in f_frsize units */
+  fsblkcnt_t f_bfree;       /* Number of free blocks */
+  fsblkcnt_t f_bavail;      /* Number of free blocks for
+  unprivileged users */
+  fsfilcnt_t f_files;       /* Number of inodes */
+  fsfilcnt_t f_ffree;       /* Number of free inodes */
+  fsfilcnt_t f_favail;      /* Number of free inodes for
+  unprivileged users */
+  unsigned long f_fsid;     /* Filesystem ID */
+  unsigned long f_flag;     /* Mount flags */
+  unsigned long f_namemax;  /* Maximum filename length */
+};
+------------------------------------------------------------------------------------
+But with statvfs(), it doesn't show the file type, so we do hybrid solution, 
+  which means we use this command and just use one extra command to get the file type.
+- The next thing i want to fix is that when looking for the file type, we dont want it to 
+  be checking all the long list, 
+  instaed, we willl just be making and checking our own list instead
+------------------------------------------------------------------------------------
+case 0xadf5: return "adfs";
+case 0xadff: return "affs";
+case 0x5346414f: return "afs";
+case 0x09041934 : return "anon-inode-fs";
+--snip--
+------------------------------------------------------------------------------------
+
+
+
+For fsidtest.c, the way to run it will be
+------------------------------------------------------------------------------------
+$ fsidtest /var/log
+7798a2a57e58ac74
+$ stat -c"%i" -f /var/log
+7e58ac747798a2a5
+------------------------------------------------------------------------------------
+And based on this, we will be able to build spl_statfs.c

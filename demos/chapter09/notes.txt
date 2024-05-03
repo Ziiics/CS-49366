@@ -1,0 +1,205 @@
+----------------------------------------------------------------------------------------
+kill(942, SIGTERM); // sends the SIGTERM signal to the process whose PID is 942
+----------------------------------------------------------------------------------------
+If a process doesn’t have permission to send a signal to the specified process, kill() returns -1.
+The first argument can be 0, -1, or another negative number, means :
+  - (0) The signal will be sent to all processes in the same process group.
+  - (-1) If sender isn't superuser, it’s sent to all processes for which it has permission to send signals, which are all those processes whose
+        real or saved set-user-ID is the same as the real or effective user ID of the sending process.
+  - (n < -1) It’s sent to all processes in the process group whose process group ID is the absolute value of n. When we run a command such as
+      $ last | grep pts/0 | sort | uniq
+      process that is created separately are placed into a single process group, so we can just kill the group.
+
+System 5 is mousetrap mode.
+The reason is because linux doesn't automatically reset the signal handler.
+Meaning that if another signal comes in, the signal handler will handle it in the same way.
+
+We can use fg to continue
+----------------------------------------------------------------------------------------
+$ fg %(num of job) or %(name of program)
+----------------------------------------------------------------------------------------
+
+
+Program also need to be able to block signal, the way to do it by masking a signal prior to running it.
+  - Mask temporarily block the signal
+  - If the bikt is set, then the signal will be blocked.
+  ----------------------------------------------------------------------------------------
+  /* Prototype for the glibc wrapper function */
+  int sigprocmask(int how, const sigset_t *set, sigset_t *oldset); 
+  ----------------------------------------------------------------------------------------
+    how: we can call it to revert the signal. The selections are 
+    SIG_BLOCK: adding signal that will be blocked to the previous list.
+    SIG_UNBLOCK: adding signal that will be unblocked to the previous list.
+    SIG_SETMASK.
+
+
+
+Signal Sets
+A signal set is a data structure that specifies a set of signals. 
+The system data type sigset_t represents a signal set. 
+The sigsetops man page lists five functions for working with signal sets:
+  - int sigemptyset(sigset_t *set) 
+    This initializes the parameter (set) to be empty, or in other words, to exclude every defined signal type. 
+    It always returns 0.
+  - int sigfillset(sigset_t *set) 
+    This initializes the parameter (set) to be full, or in other words, to include every defined signal type. 
+    It always returns 0.
+  - sigaddset(sigset_t *set, int signum) 
+    Given a particular signal (signum), this adds that signal type to the given signal set, set. It returns 0 on success, and -1 on failure. 
+    The only possible failure occurs if signum isn’t a valid signal number.
+  - sigdelset(sigset_t *set, int signum) 
+    Given a particular signal (signum), this deletes that signal type from the given signal set, set. It returns 0 on success, and -1 on failure. 
+    The only possible failure occurs if signum isn’t a valid signal number.
+  - int sigismember(const sigset_t *set, int signum)
+    This function tests whether signum is a member of the signal set set. 
+    It returns 1 if the signal is in the set, 0 if not, and -1 on error, which only occurs if signum isn’t a valid signal number.
+
+When signal is blcoked, the coming command is not a queue. So it will only remember the lastest command.
+
+???????? I don't undetrsnad page 446-450!! ????????????????????
+
+when you can't kill it, it have to use sigkill, 
+----------------------------------------------------------------------------------------
+$ kill -9 <pid>
+----------------------------------------------------------------------------------------
+
+Async signal safety
+sig_atomic_t type: delcaring a function when you are going to use it in the signal handler.
+  - meaning that it have to be small enough that it can be moved and store in 1 operation.
+  - example: if it have 1bit, and its a 64bit computer, then it is small enough.
+The signal.h(7POSIX) man page defines sig_atomic_t as a “possibly
+volatile-qualified integer type of an object that can be accessed as an atomic
+entity, even in the presence of asynchronous interrupts.” Let’s break this down.
+Variables that are declared to be sig_atomic_t can be read or written with a
+single, uninterruptible machine instruction. They are atoms, in the sense that
+they are moved around as single chunks in the machine. A data type consisting
+of larger pieces, such as a struct, is not an atom. Standard int types are
+usually atomic, but this is not guaranteed. A 64-bit integer might be moved as
+two 32-bit chunks on some architectures.
+When compilers optimize code, they sometimes put variables into registers
+temporarily. If a variable is in a register, and another part of the program
+updates the in-memory copy, the value in the register is no longer valid. The
+volatile qualifier tells the compiler that it’s not safe to do this, because the
+variable might be updated asynchronously by other parts of the same program.
+Therefore, it’s common to see variables declared as volatile sig_atomic_t in
+code intended to access them atomically and possibly asynchronously.
+
+Example from sigprocmask_demo3.c 
+----------------------------------------------------------------------------------------
+static volatile sig_atomic_t sig_received = 0;
+----------------------------------------------------------------------------------------
+- when static is written in front of the type, means that this identifier has internal-linkage.
+  SO that if the name is used somewhere outside the file, it will not affect this file.
+
+
+
+// Read until page 451
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Because sometimes another signal can come when our signal handler is working.
+Sometimes a signal can get interrupted by signal and just end instead of continuing or restarting.
+
+To help with that, we use sigaction() system call
+----------------------------------------------------------------------------------------
+#include <signal.h>
+int sigaction (int signum, const struct sigaction *act,
+      struct sigaction *oldaction);
+----------------------------------------------------------------------------------------
+- signum: value of signal to be handled
+- act: pointer to sigaction structure that specifies the handler, masks, and flags for the signal
+- oldact: is a pointer to a structure to hold the currently active sigaction data.
+
+Blocking singal using mask(?)
+
+sigaction structure
+----------------------------------------------------------------------------------------
+struct sigaction {
+  // when it is called it will either call ont of these
+  void (*sa_handler)(int);
+  void (*sa_sigaction)(int, siginfo_t *, void *);
+
+  sigset_t sa_mask;
+  int sa_flags;
+  void (*sa_restorer)(void);    // we don't use this
+};
+----------------------------------------------------------------------------------------
+
+union is basically like struct, the difference is they will be in the same memory location.
+It is used so that it can be accessed in a different way
+
+sa-flags field have few types
+- SA_NODEFER: never defer (the signal is stacked) a signal, its like a recursive function. 
+    The issues is we have to manually raise
+- SA_RESETHAND When set, the signal action is reset to SIG_DFL. This
+means that as soon as the signal is delivered, the default action will
+take place. This flag implies the SA_NODEFER flag, because signals are
+not blocked. The difference is that instead of a second handler
+instance running, the process takes the default action for the signal. The intention is to make the handler behave like the old-style,
+mouse-trap-like signal() handler, since any signal of the same type
+arriving after the first will cause the default behavior.
+- SA_RESTART When set, certain system calls that would otherwise be
+terminated if a signal were delivered during their execution, will be
+restarted automatically. The signal(7) man page lists and describes
+the system calls that would be restarted if this flag were set.
+- SA_SIGINFO: use the one that have 3 argument, otherwise od the original one.
+
+----------------------------------------------------------------------------------------
+siginfo_t {
+  int           si_signo;         /* Signal number */
+  int           si_errno;         /* An errno value */
+  int           si_code;          /* Signal code */
+  int           si_trapno;        /* Trap num that caused hardware-generated signal */
+  pid_t         si_pid;           /* Sending process ID */
+  uid_t         si_uid;           /* Real user ID of sending process */
+  int           si_status;        /* Exit value or signal */
+  union sigval  si_value;  /* Signal value */❶
+  --snip--
+  int           si_syscall;       /* Number of attempted system call */
+  unsigned int  si_arch;   /* Architecture of attempted system call */
+}
+----------------------------------------------------------------------------------------
+
+When you want to do io when doing signal handler, you have to use write() because printf() is unsafe.
+For the sigact_demo3.c, also checkout terminal buffer
+  It is connected on why we have to flush
+
+
+Sleep let signal to be delayed until specific amount of time.
+Timer let signal be run on a specified time.
+
+line buffering(?) on terminal that uses fflush to throw the data in the input terminal.
+isatty - test whether a file descriptor refers to a terminal
+top command- shows the running ?? recursive library??
+  it use recursive to redraw the screen.
+
+SIGWINCH: not available in all systems. This is to get indication that the window size is resized.
+It uses IOCTL.
+To get the size using TIOCSWINSZ from IOCTL_TTY(2).
+write() vs printdef()
+
+
+
+
+Guidance on Designing Signal Handlers
+- The signal handlers should be as little as possible. It is better to have another function that run when the signal handler is called.
+- We can run sig_user1 or sig_user2 signal that does whatever we want in that. 
+- It realtes to signal that is running on subsystem
+- Exception 
+
+

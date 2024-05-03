@@ -1,0 +1,164 @@
+/*
+Man Pages
+       1   Executable programs or shell commands, command line tools
+                man, vim, more, less, apropos
+       2   System calls (functions provided by the kernel), written in C code
+                open, statx, stat, chmod, time, getpid()
+       3   Library calls (functions within program libraries), built from system calls
+                printf, scanf, free, 
+       4   Special files (usually found in /dev)
+       5   File formats and conventions, e.g. /etc/passwd
+       6   Games
+       7   Miscellaneous (including macro packages and conven‐
+           tions), e.g. man(7), groff(7), man-pages(7)
+       8   System  administration  commands  (usually only for
+           root)
+       9   Kernel routines [Non standard]
+
+man will search in the order of the sections and only display the first
+one even if there are more pages in later sections
+*/
+
+/*
+SECTION 2
+pid_t getpid(void);
+    #include <sys/types.h>
+    #include <unistd.h>
+    Returns process ID
+    No errors because function always runs successful
+
+ pid_t gettid(void);
+    #define _GNU_SOURCE
+    #include <unistd.h>
+    #include <sys/types.h>
+    Returns the thread ID
+    No errors because function always runs successful
+
+SECTION 3
+int printf(const char *format, ...);
+    Returns # of characters printed excluding null byte
+    Output error, returns negative value
+
+int scanf(const char *format, ...);
+    Reads from the standard input stream
+    Returns # of input items sucessfully matched and assigned
+    Returns EOF (end of file) if the end of input is reached before either
+    the first successful conversion or a mathcing error occurs
+
+void exit(int status);
+    Causes normal process termination
+
+size_t strlen(const char *s);
+    Calculates the length of the string pointed to by s excluding the null byte \0
+    Returns # of bytes in the string pointed to by s
+        Each character is represetned as one byte
+
+int getchar(void);
+int getc(FILE *stream);
+    Reads from standard input each char and converts each to its ASCII value
+    Returns the character read from stdin as an unsigned char cast to an int or EOF on end of file or error
+
+EOF (end of file) = Ctrl-D
+EOF is a macro in stdio defined as -1.
+
+int putchar(int c);
+int putc(int c, FILE *stream);
+    Reads the ASCII value of a char and casts to unsigned char.
+    Returns this characters a stream such as the output stream
+
+char *getenv(const char *name);
+    Searches the environment list to find the name
+    Returns a pointer to the environment value string 
+        Functions allocates its own memory to store value from 
+        environemnt string and returns address to this string
+
+*/
+
+/******************************************************************************/
+
+// stdin_demo.c
+#include <stdio.h>      // getc (3), getchar(3), putc(3)
+
+/* copy from stdin to stdout */
+int main()
+{
+    int c;
+    while ( (c = getc(stdin) ) != EOF )
+        putc(c, stdout);
+    return 0;
+}
+// When the end of input stream is detected by getchar(), which can be caused 
+// by the user's typing Ctrl-D, getchar() returns EOF. Putc returns the character
+// to output stream
+// Ex. g
+// Output: g
+
+/******************************************************************************/
+
+// hello.c
+#include <stdio.h>      // printf (3), scanf (3)
+#include <stdlib.h>     // exit (3)
+#include <string.h>     // strlen (3)
+
+int main()
+{
+    char    name[256];              // Holds the name you put in
+    printf("Enter your name: ");
+    scanf("%255s", name);           // Similar to cin >> name
+    printf("hello %s\n", name);     // Print
+    if ( strlen(name) < 60 )        // Checks length of name but I don't see why
+        exit(1);
+}
+// Asks for you name and then prints
+// hello ___
+
+/******************************************************************************/
+
+// getenv_demo.c
+#include <stdio.h>      // printf (3)
+#include <stdlib.h>     // getenv (3)
+
+int main()
+{
+    char* num_columns = getenv("COLUMNS");
+    printf("This window has %s columns.\n", num_columns);
+};
+// Output: This window has (null) columns.
+
+
+// badgetenv.c => WILL NOT RUN
+#include <stdio.h>      // printf (3)
+#include <stdlib.h>     // getenv (3)
+
+int main()
+{
+    char num_columns[200];
+    num_columns = getenv("COLUMNS");  /* This cannot compile because num_columns
+                                         is a const char* but getenv() allocates
+                                         its own memory for the returned string
+                                         and returns its address. */
+    printf("This window has %s columns.\n", num_columns);
+};
+
+/******************************************************************************/
+
+// show_pid.c
+#include <stdio.h>         // printf (3)
+#include <unistd.h>        // getpid (2)
+int main()
+{
+    printf("I am the process with process-id %d\n", getpid());
+}
+// Output: I am the process with process-id 1544930
+
+/******************************************************************************/
+
+#define _GNU_SOURCE         // gettid (3), Macro that activates GNU source code in the below header files
+#include <stdio.h>          // printf (3)
+#include <unistd.h>         // gettid (2)
+#include <sys/types.h>      // gettid (2)
+
+int main()
+{
+    printf("I am a thread with thread-id %d\n", gettid());
+}

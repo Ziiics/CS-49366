@@ -1,0 +1,55 @@
+Certain functions are common to multiple projects. 
+Rather tahn implement independently, common directory and include the header files as needed.
+
+Header files fall into two categories:
+- System-wide headers: provided by the OS
+- Local headers: declarations specific to the book's projects
+
+Some source distributions included in include/sys_hdrs.h
+--------------------------------------------------------------------------
+#include <sys/types.h>  /* Type definitions used by many programs       */
+#include <stdlib.h>     /* Prototypes of many C functions and macros    */
+#include <stdlio.h>     /* C standard I/O library                       */
+#include <string.h>     /* String functions                             */
+#include <limits.h>     /* System limit constants                       */
+#include <unistd.h>     /* Prototypes of most system calls              */
+#include <errno.h>      /* errno and error constants and functions      */
+--------------------------------------------------------------------------
+
+Header guard: constructed in C and C++ to prevent multiple inclusion. Example
+--------------------------------------------------------------------------
+#ifdef COMMON_HDRS_H
+#define COMMON_HDRS_H
+    --snip--
+#endif /* COMMON_HDRS_H */
+--------------------------------------------------------------------------
+
+Extract numbers by using get_nums.h, where it extract the numeric values of string data. Some example include get_long() and get_int().
+
+Some possible flags include
+- NO_TRAILING   : return a TRAILING_CHARS_FOUND value of digits if founded
+- NON_NEG_ONLY  : return NEG_NUM_FOUND if the numeric value is negative
+- ONLY_DIGITS   : return NO_DIGITS_FOUND if string has no digits and set *value to zero.
+Because they are independent, they can be or-ed into flag to pass to the function
+--------------------------------------------------------------------------
+  int flag = 0;
+  flag = flag | NO_TRAILING | ONLY_DIGITS;
+--------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------
+
+--------------------------------------------------------------------------

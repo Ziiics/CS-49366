@@ -1,0 +1,314 @@
+
+File creation mask = umask = the nine bits that restricts which permissions are e
+user group others   // this is also called the octal value 022 
+------------------------------------------------------------------------
+
+
+We can see the octal value of umask, we can do
+------------------------------------------------------------------------
+$ umask       // see octal value of permission
+$ umask -S    // shows each group permission with characters
+$ umask 033   // change the umask by giving it a umask
+value argument
+------------------------------------------------------------------------
+Can also be added to the shell configuration files if we want something other than the default value
+------------------------------------------------------------------------
+# Set my umask to turn off group reads; others: no read, no write
+  umask 026
+------------------------------------------------------------------------
+umask value will be inhereted from the shell.
+
+On Linux, every process has four user IDs:
+• A real user ID
+• An effective user ID - determine whether to grant memory acceses permission
+• A saved set-user-id
+• A filesystem user ID, which is Linux-specific - determine user access files == effective user id
+
+
+
+setuid bit
+- Is highest-order bit in a file’s mode.
+- When enabled, it allows a user to execute a program with the permission of another user.
+- Can be checked by checking 
+  ------------------------------------------------------------
+  $ ls -l         // when the user execute permission is s, its enabled 
+    -rwsr-xr-x 1 root root 59976 Nov 24 07:05 passwd
+  ------------------------------------------------------------
+
+File I/O operations in Unix-like systems involve three main steps: opening the file to establish a connection (and obtaining a file descriptor for that connection), performing read/write operations through that connection, and finally, closing the file to properly save data and free up system resources.
+
+Open File Description (OFD) is an object that establish connection between process and file. The OFD contains crucial information for managing the interaction, such as:
+- File Offset (File Pointer): The position in the file where the next read or write operation will occur.
+- Access Modes: Determines how the file can be used (e.g., read-only, write-only, or read/write).
+- File Location Information: Helps the system locate the file on the storage device.
+- Control Flags and Mode Bits: These specify additional options for how operations on the file should be conducted.
+
+To open a file, a process uses an operation that returns a file descriptor. A file descriptor is a small, non-negative integer that acts as a reference to the OFD. 
+- When a process opens a file, it specifies an access mode (Read Mode, Write Mode, Read/Write Mode).
+- POSIX also allows multiple processes to access the same file simultaneously. 
+- Unix systems allow a process to duplicate a file descriptor, meaning that two different descriptors can point to the same OFD.
+
+When a process is done using a file, it must close it. Closing a file:
+- Releases the file descriptor so it can be reused.
+- Ensures data written to the file is actually saved to the storage device. 
+- Frees the resources associated with the OFD if no other descriptors are pointing to it.
+
+When a process is started from a shell, it inherits three open file descriptors
+- File descriptor 0 (standard input) refers to the input receiving connection (STDIN_FILENO).
+- File descriptor 1 (standard output) refers to the sending output connection (STDOUT_FILENO).
+- File descriptor 2 (standard error) refers to the sending error connection (STDERR_FILENO).
+
+
+
+
+
+Now, we want to be bale to write a copy command as in 
+------------------------------------------------------------------------
+cp file1 file2
+------------------------------------------------------------------------
+
+
+
+
+
+To do this, we will start by
+
+
+1. Opening files
+    
+   Find the command we need to open a file (apropos -s2 open), then we will find 
+   that creat(), open(), and openat() share a single man page.
+   ------------------------------------------------------------------------
+   int open(const char *pathname, int flags, ... /* mode_t mode */);
+   ------------------------------------------------------------------------
+   - pathname: pathname of the file
+   - flags: bit mask (distinct boolean values taht can be inspected) to specify acccess mode
+     - O_RDONLY- Open the file for reading only.
+     - O_WRONLY Open the file for writing only.
+     - O_RDWR Open the file for reading and writing.
+     - O_CREAT Creates the file specified by pathname if it does not already exist.
+     - O_EXCL Used with O_CREAT, forces open() to fail if pathname already exists.
+     - O_TRUNC If pathname exists and is a regular file, truncates it to zero length before writing to it.
+   - mode: optional bit mask used only when function is being called to create a new file.
+      This focus on what files permission is given to the created file. If we don't give,
+      the outcome permission will be unpredictable.
+      - S_IRWXU or 00700 User has read, write, and execute permission.
+      - S_IRUSR or 00400 User has read permission.
+      - S_IWUSR or 00200 User has write permission.
+      - S_IXUSR or 00100 User has execute permission.
+      - S_IRWXG or 00070 Group has read, write, and execute permission.
+      - S_IRGRP or 00040 Group has read permission.
+      - S_IWGRP or 00020 Group has write permission.
+      - S_IXGRP or 00010 Group has execute permission.
+      - S_IRWXO or 00007 Others have read, write, and execute permission.
+      - S_IROTH or 00004 Others have read permission.
+      - S_IWOTH or 00002 Others have write permission.
+      - S_IXOTH or 00001 Others have execute permission
+
+
+    Some examples to use the open() command
+    ------------------------------------------------------------------------
+    int fd = open("outfile", WR_ONLY|O_CREAT);    // can open for read write or
+    if ( -1 == fd )                                  create if doesnt exists
+      /* Handle error */
+    ------------------------------------------------------------------------
+    fd = open(argv[1], O_RDWR |O_CREAT|O_TRUNC);  // trying to oepn from arg
+    ------------------------------------------------------------------------
+    fd = open("outfile", O_WRONLY|O_CREAT|O_EXCL );
+    // open file for writing. If does not exist, create. If "outfile" already exists, 
+      the call will not open it and will return an error instead.
+    ------------------------------------------------------------------------
+
+    Some causes when opening files return error
+    • The specified file doesn’t exist.
+    • The user doesn’t have permission to open the file.
+    • One or more flags passed to the open call are invalid.
+    • It tried to create a file and couldn’t, either because 
+      - it didn’t have permission in the specified directory or 
+      - the file exists and O_CREAT and O_EXCL were passed.
+
+
+
+2. Closing Files
+
+    This is important because opening and closing are symmetric operations. 
+    When open a file, we have to know how to close it.
+
+    To close file, we can use close() 
+    - It returns zero on success. On error, -1 is returned, and errno is set appropriately
+    - only close the one corresponding to fd
+    ------------------------------------------------------------------------
+    errno = 0;                  /* Need to include <errno.h> */
+    return_val = fsync(fd);     /* Flush data to device. */
+    
+    if ( -1 == return_val) {    /* Error trying to flush data to device */
+      fatal_error(errno, "fsync() to pathname");
+
+    errno = 0;                  /* successful */
+    if ( -1 == close(fd) )
+      fatal_error(errno, "closing pathname");
+    }
+    ------------------------------------------------------------------------
+
+
+
+3. Reading from files
+
+    ------------------------------------------------------------------------
+    pread (2) - read from or write to a file descriptor at a given offset
+    read (2) - read from file descriptor
+    ------------------------------------------------------------------------
+    pread() may not be suitable because its not intended for multithreading.
+
+
+    So, here we will be using read()
+    ------------------------------------------------------------------------
+    BOOL done = FALSE;              /* Flag to indicate no more data */
+    while ( ! done ) {
+      return_val = read(fd, buffer, 100);
+      if ( 0 > return_val )         /* An error code was returned during reading */
+        fatal_error(errno, "error reading file...");
+      else if ( 0 == return_val )   /* The end of file was reached - stop reading */
+        done = TRUE;
+      else
+        /* buffer[0...return_val-1] contains the bytes just read.
+        Transfer this data to its final destination before
+        it is overwritten by the next call to read(). */
+    }
+    ------------------------------------------------------------------------
+
+
+
+4. Writing to Files
+
+    We will use the write() which doesn't try to rewrite after a partial write
+    ------------------------------------------------------------------------
+    write(fd, buffer, num_bytes)
+    ------------------------------------------------------------------------
+    errno = 0;
+    /* buffer is where the data from, num_bytes is how many to write */
+    result = write(fd, buffer, num_bytes);
+    if ( result == -1 )
+        /* Error in writing - use errno value to print a message
+        to user, exiting if appropriate. */
+    else if ( result < num_bytes )
+        /* Some but not all data was written; display message and exit. */
+    else
+        /* write() was successful and all data was written. */
+    ------------------------------------------------------------------------
+
+
+
+5. Writing the copy command
+
+    cp() can also be done to symbolic link (type of file that point to another file or directory).
+    ------------------------------------------------------------------------
+    $ ls -F     /* lists of dir with append indicator */
+    ------------------------------------------------------------------------
+    * indicates an executable file.
+    / indicates a directory.
+    = indicates a socket.
+    > indicates a door (a special type of inter-process communication mechanism in some Unix systems).
+    @ indicates a symbolic link.
+    | indicates a named pipe (FIFO)
+    ------------------------------------------------------------------------
+    $ readlink backups    /* to see where its really pointing to */
+    ------------------------------------------------------------------------
+
+
+    Important POSIX requirements to remember
+    - If the target file (target_file) already exists, cp will overwrite it by default. 
+      - This action, known as clobbering, permanently replaces the existing file's contents. 
+      - To avoid accidental overwriting, the -i option can be used to prompt the user for confirmation before overwriting.
+    - Permissions and Ownership
+      - If the target file existed before copying, its permissions and ownership remain unchanged.
+      - If the target file is newly created, it inherits the source file's permissions (modified by the user's umask) and the source file's ownership.
+    - POSIX does not require cp to detect if the source and target are the same file.  
+      - However, most cp implementations will detect this and prevent the operation, indicating that the source and target are the same.
+    - If the source file is a symbolic link, cp copies the file the link points to, not the symbolic link itself.
+    - By default, cp does not copy directories without options and can copy special files if the user has the necessary permissions to read them.
+
+    Design the copy Program
+    1. Cml have two arguemnts and exit with a usage error if doen't
+    2. First arg is for reading, if can't (maybe its a dir) then report error and exit
+    3. Second arg for writing, allow it to be created if doesn't exist, overwrite if it does
+    4. Enter loop to read the source file
+       - Read chunk of data to buffer and store nums of bytes read to nums_bytes_read
+       - Write num_bytes_read from buffer to target file. If error, or data written is less,
+          report error and exit
+    5. Close the source file
+    6. Close the target file
+    7. Return a value indicating success or not
+
+
+    We can also change the conditional macro without changing the program itself
+    ------------------------------------------------------------------------
+    gcc -DBUFFER_SIZE=4096 spl_cp.c -L ../lib -lspl -o spl_cp
+    ------------------------------------------------------------------------
+
+
+
+6. Checking corretness
+
+    When copying, the way to check correctness are
+    - it should make identical copies of source files, can be checked with
+      ----------------------------------------------
+      $ diff -s file1 file2   // only compare text files
+      $ cmp -l  // output all differences in two files
+      $ du -b   // to check file size in bytes
+      ----------------------------------------------
+    - should report incorrect usage errors whenever it occurs
+
+
+    Some important notes
+    - Universality of I/O: Unix's model treats all forms of I/O in a consistent manner, 
+      whether files on a disk, user input from terminal, or communication between processes. 
+    - Device Files: Special files in Unix (like /dev/tty for the terminal) allow processes to interact 
+      with hardware and other system resources using the same operations used for reading and writing files.
+    - End-of-File Signal (CTRL-D): In Unix, CTRL-D signals the end of input when reading from the terminal, 
+      mimicking reaching the end of a file.
+
+
+
+7. The amount of time it needs to execute
+
+    To check how long it take for the program to execute
+    ----------------------------------------------
+    $ time -p command 
+    $ /usr/bin/time -p command    // for non-bash version      
+    ----------------------------------------------
+
+    Types of time
+    - Real Time (wall-clock time): total elapsed time from start to finish of the operation
+    - User Time: time spent by CPU executing user code
+    - System Time: time spent by CPU executing kernel-level operations (system calls)
+
+    Copying files with different sizes:
+    - As the file size increases, 
+      - real time increase in proportion to the file size, its because
+      - system time increase as larger files require more disk operations, reflected in the system time (kernel)
+      - user time does not increase significantly bcs the program's own code does little more than initiate the copy operation
+    
+
+8. Buffer size
+
+    When a program copies a file, it 
+      1. reads data from source into a temporary storage area in memory (buffer), then
+      2. writes that data from buffer to target file. 
+    - The buffer's size impacts the number of syscall (read() and write()) the program makes.
+    - By increasing the buffer size, less calls are needed to copy the same file,
+      making program faster by reducing the number of syscalls.
+
+    One complication: Kernel Buffering
+    - "buffer cache" by kernel memory
+    - when your program calls read(), kernel reads the data into buffer cache
+      then, copies the data from there into your program's memory.
+    - when write(), it copies data from your program into the kernel's buffer cache, \
+      and later, it writes the data from the cache to the disk.
+    - so, size of kernel's buffers, the way kernel flush its buffers to disk, all matters.
+
+
+
+
+
+

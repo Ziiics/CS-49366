@@ -1,0 +1,6 @@
+Alarm vs timer
+- Alarm: for a specific time. Like our real alarm. Absolute time.
+- Timee: for a specitic moment. Relative time.
+  There are timer that have nanoseconds resolution
+
+Buffer is different for terminal and file. File use line buffer and terminal use block buffer.
