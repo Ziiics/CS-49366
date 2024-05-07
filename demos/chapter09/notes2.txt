@@ -76,10 +76,6 @@ int sigemptyset(sigset_t *set);
 int sigaction(int sig, const struct sigaction *restrict act, struct sigaction *restrict oact);
   // examine and change a signal action
   #include <signal.h>
-
-int tcflush(int fd, int queue_selector);
-  #include <termios.h>
-  #include <unistd.h>
   int sig - specifies the signal number which action will be change
   const struct sigaction *restrict act - pointer to a struct sigaction structure that defines the new action
     Contains several fields:
@@ -88,6 +84,15 @@ int tcflush(int fd, int queue_selector);
       - sa_flags: Flags that modify the behavior of the signal handling; 
           ex: SA_RESTART to make certain interrupted system calls restart automatically.
   struct sigaction *restrict oact - OPTIONAL, If not null, sigaction() will save the previous action of specified signal sig in the oact
+
+int tcflush(int fildes, int queue_selector);
+  #include <termios.h>
+  #include <unistd.h>
+  fildes - file dscriptor of the device to flush
+  queue_selector - value that specifies which queue to flush, possible values:
+    TCIFLUSH - flushes input queue
+    TCOFLUSH - flushes output queue
+    TCIOFLUSH - flush both
 
 usleep(3)
 int usleep(useconds_t usec);
