@@ -12,10 +12,22 @@
 int sigaddset(sigset_t *set, int signo);
   // add a signal to signal set, have to sigemptyset() or sigfillset() at least once prior to any other use of that object
   #include <signal.h>
-  sigset_t *set - specification of the added signal 'signo'
-  int signo - 
-  
+  sigset_t *set - the set fo signal to be deleted from
+  int signo - signal number from the set
 
+int sigprocmask(int how, const sigset_t *_Nullable restrict set, sigset_t *_Nullable restrict oldset);
+  // examine and change the signal mask of the calling thread
+  #include <signal.h>
+  int how - how the signal mask should be changed, the value options are
+    SIG_BLOCK - signals specified in 'set' are added to the current signal mask
+    SIG_UNBLOCK - signals specified in 'set' are removed from the current signal mask
+    SIG_SETMASK - signals specified in 'set' becomes the new signal mask replacing the current mask
+  const sigset_t *_Nullable restrict set - set of signals to be updated
+  sigset_t *_Nullable restrict oldset - pointer to a sigset_t 
+    if its NULL, the previous value of the mask won't be stored 
+    if not NULL, signal mask is unchanged and 'how' is ignored
+  
+  
 */
 
 #include  "common_hdrs.h"
