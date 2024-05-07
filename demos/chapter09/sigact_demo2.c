@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title       : sigact_demo2.c
-  Author      : Stewart Weiss
-  Created on  : December 9, 2023
   Description : Displays siginfo information about SIGFPE sent to it
   Purpose     : To show how to use siginfo_t info data
   Usage       : sigact_demo2  [f]
@@ -9,18 +6,32 @@
                 it will have a divide-by-zero error.
   Build with  : gcc -O0 -o sigact_demo2 -I../include -L../lib sigact_demo2.c \
                      -lm  -lspl
-
-
-******************************************************************************
-* Copyright (C) 2023 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+char *strsignal(int sig);
+  // return string describing signal
+  #include <string.h>
+
+typedef struct {
+	int si_signo;     // signal number being delivered, always set
+	int si_code;      // signal code, always set (system generated)
+	union sigval si_value;  // signal value
+	int si_errno;     // if non-zero, errno value associated w/ this signal
+	pid_t si_pid;     // pid of sending process
+	uid_t si_uid;     // real uid of sending process
+	void *si_addr;    // address at which fault occured
+	int si_status;    // exit value or signal for process termination
+	int si_band;      // band event for SIGPOLL/SIGIO
+} siginfo_t;
+
+
+
+
+
+
+*/
 
 #define _GNU_SOURCE
 #include "common_hdrs.h"

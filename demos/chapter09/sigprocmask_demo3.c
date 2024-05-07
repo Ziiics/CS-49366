@@ -1,23 +1,10 @@
 /*****************************************************************************
-  Title       : sigprocmask_demo3.c
-  Author      : Stewart Weiss
-  Created on  : December 2, 2023
   Description : Counts and prints SIGINTs delivered
   Purpose     : To show how to share data between handler and rest of program
   Usage       : sigprocmask_demo3
                 Enter CTRL-Cs and observe that they're counted correctly.
   Build with  : gcc -I../include -o sigprocmask_demo3 sigprocmask_demo3.c \
                      -L../lib -lspl
-
-******************************************************************************
-* Copyright (C) 2023 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
 
 #include  "common_hdrs.h"

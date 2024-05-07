@@ -1,23 +1,40 @@
 /*****************************************************************************
-  Title       : kill_demo.c
-  Author      : Stewart Weiss
-  Created on  : November 25, 2023
   Description : Sends a SIGINT then a SIGTERM to specified process
   Purpose     : A tool to help show how signal handlers work
   Usage       : Start up signal_demo3, capture its PID, and run
                         kill_demo <pid>
   Build with  : gcc -I../include -o kill_demo kill_demo.c -L../lib -lspl
-
- *****************************************************************************
-* Copyright (C) 2023 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+int get_int(char *arg, int flags, int *value, char *msg)
+  // process a string input 'arg' and attempt to convert it to an integer based on 'flags'
+  char* arg [IN] – input string to parse, provided by caller
+  int flags [IN] - specify how to handle anomalies during parsing (allowed condition of arg)
+  int* value [OUT] - pointer to an integer where the function will store the parsed number if successful
+  char* msg [OUT] - pointer to a character array where an error message will be stored if parsing fails
+
+int kill(pid_t pid, int sig);
+  // send any signal to any process group or process
+  #include <signal.h>
+  pid_t pid - target process identifier (PID) to be sent, based on the value below, signal will be send to:
+    > 0   : the process with the specified PID.
+    == 0  : all processes in the process group of the calling process.
+    < -1  : all processes in the process group whose ID is the absolute value of pid.
+    == -1 : all processes for which the calling process has permission to send signals, except for process 1 (init).
+  int sig - signal number to be sent, some common ones are:
+    SIGTERM (15): politely asking to terminate a process
+    SIGKILL (9): temrinate process immediately, CAN'T BE IGNORED
+    SIGSTOP (19): pause process, CAN'T BE IGNORED
+    SIGCONT (18): resume paused process
+    SIGALRM (15): timer signal from alarm()
+
+unsigned sleep(unsigned seconds);
+  // cause the calling thread to be suspended from execution until time elapsed
+  #include <unistd.h>
+
+*/
 
 #include  "common_hdrs.h"
 #include  <signal.h>
@@ -42,3 +59,5 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
+

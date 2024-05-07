@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 {
     unsigned short int rows, cols;
 
-    if (isatty(STDIN_FILENO) == 0) {
+    if (isatty(STDIN_FILENO) == 0) {        // isatty: a function to check if a redirection is to a terminal
         fprintf(stderr, "Not a terminal\n");
         exit(1);
     }

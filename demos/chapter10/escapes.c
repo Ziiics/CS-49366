@@ -80,8 +80,8 @@ int main(int argc, char *argv[])
 
   // Clear the screen.
   sprintf(line, "%s%s", CLEAR_SCREEN, CURSOR_HOME);
-  write(1, line, strlen(line));
-  sprintf(line, "\033[1;10H +");
+  write(1, line, strlen(line));     // It is very important to not use printf
+  sprintf(line, "\033[1;10H +");    // write is reentrant and if signal interrupts, it can still continue
   write(1, line, strlen(line));
   for (i = 4; i < 20; i += 4)
   {

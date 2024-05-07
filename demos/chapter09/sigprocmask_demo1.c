@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title       : sigprocmask_demo1.c
-  Author      : Stewart Weiss
-  Created on  : December 2, 2023
   Description : Gets orig signal mask, modifies blocked set, restores orig
   Purpose     : To show how to create signal masks for blocking signals
   Usage       : sigprocmask_demo1
@@ -11,16 +8,6 @@
                  Then type the Ctrl-C in the second loop.
   Build with  : gcc -I../include -o sigprocmask_demo1 sigprocmask_demo1.c \
                      -L../lib -lspl
-******************************************************************************
-  Copyright (C) 2023 - Stewart Weiss
-
-  This code is free software; you can use, modify, and redistribute it
-  under the terms of the GNU General Public License as published by the
-  Free Software Foundation; either version 3 of the License, or (at your
-  option) any later version. This code is distributed WITHOUT ANY WARRANTY;
-  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-  PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.
-
 *****************************************************************************/
 #include  "common_hdrs.h"
 #include  <signal.h>
