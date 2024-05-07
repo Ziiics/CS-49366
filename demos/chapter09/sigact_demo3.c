@@ -1,6 +1,33 @@
 /*****************************************************************************
   Description/   : Allows various flags to be passed
 *****************************************************************************/
+
+/*
+
+sigset_t
+  // a type representing a signal set, used by signal blocking functions to specify which signals are affected.
+  // because blocked signal has occured but is still pending, 
+  // sigset_t passed to sigpending containes the pending signals for the calling process
+
+const char *sigabbrev_np(int sig);
+  // returns abbreviated name of signal sig
+
+action.sa_sigaction = sig_handler;       /* SIGINT handler, to specify signal catching function  */
+action.sa_flags = SA_SIGINFO | flags;    /* Add the entered flags, to modifies behavior */
+sigemptyset(&blocked);                   /* Clear all bits of mask.   */
+action.sa_mask = blocked;                /* mask of signal to be blocked during execution of signal handler */
+  // In the sigaction structure, the sa_flags field can be used to modify the behavior of a specified signal. 
+  // When the SA_SIGINFO flag is set in the sa_flags field, the sa_sigaction field specifies a signal-catching function
+
+void* memset (void* ptr, int value, size_t num);
+  // sets sets the first 'num' bytes of the block of memory pointer by 'ptr' to the specified 'value'
+  void* ptr - pointer to the block of memory to fill
+  int value - value to be set
+  size_t num - num of bytes to send to value
+
+*/
+
+
 #define _GNU_SOURCE
 #include  "common_hdrs.h"
 #include  <signal.h>
