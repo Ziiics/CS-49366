@@ -1,65 +1,111 @@
-Signals is send only by the signals. The driver will let the kernel knows and let the kernel runs it.
+int get_int(char *arg, int flags, int *value, char *msg)
+  // process a string input 'arg' and attempt to convert it to an integer based on 'flags'
+  char* arg [IN] – input string to parse, provided by caller
+  int flags [IN] - specify how to handle anomalies during parsing (allowed condition of arg)
+  int* value [OUT] - pointer to an integer where the function will store the parsed number if successful
+  char* msg [OUT] - pointer to a character array where an error message will be stored if parsing fails
 
-Sources of signals:
-- User: asynchronous signals
-- Kernel: 
-- Hardware Exceptions:
-- Other Processes: as example, kill
+int kill(pid_t pid, int sig);
+  // send any signal to any process group or process
+  #include <signal.h>
+  pid_t pid - target process identifier (PID) to be sent, based on the value below, signal will be send to:
+    > 0   : the process with the specified PID.
+    == 0  : all processes in the process group of the calling process.
+    < -1  : all processes in the process group whose ID is the absolute value of pid.
+    == -1 : all processes for which the calling process has permission to send signals, except for process 1 (init).
+  int sig - signal number to be sent, some common ones are:
+    SIGTERM (15): politely asking to terminate a process
+    SIGKILL (9): temrinate process immediately, CAN'T BE IGNORED
+    SIGSTOP (19): pause process, CAN'T BE IGNORED
+    SIGCONT (18): resume paused process
+    SIGALRM (15): timer signal from alarm()
 
-Signals born and dies. From POSIX statement, "a signal is said to be generated for a process or thread when the event that causes the signal first occurs."
+unsigned sleep(unsigned seconds);
+  // cause the calling thread to be suspended from execution until time elapsed
+  #include <unistd.h>
 
-But, it suas that the signal is generated when the kernel sends it. And that is what we will use.
-The reason is because signlas have all this data structures which make a few changes, which is why wwe decided to use this meaning.
+int raise(int sig);
+  // sends signal 'sig' to the calling process or thread
+  #include <signal.h>
 
-Pending signal is when the sender process send a signal to another process which is not running. Meaning that the signal will not be done.
-Each process can only keep 1 pending signals which is the 1st one.
+sighandler_t signal(int signum, sighandler_t handler);
+  // sets the disposition of the signal signum to handler
+  // Avoid its use: use sigaction(2) instead
+  // The signals SIGKILL and SIGSTOP cannot be caught or ignored.
+  #include <signal.h>
+  int signum - the signal number to handle
+  sighandler_t handler - pointer to the signal handling function of the specified signal
+    SIG_IGN to ignore the signal.
+    SIG_DFL to reset the handling to its default behavior.
 
-Process id called delivered when either one occur:
-- the process explicitly ignores the signal.
-- the process executes a signal handler, when the process register a signal handler.
-  Signal handlers caught or catch signals
-- process accepts the default action associated with the signal.
-  some exmaple : terminate (most does this), ignore, stop, core dump.
+usleep(3)
+int usleep(useconds_t usec);
+  /// suspends the execution of calling thread for 'usec' microseconds
+  #include <unistd.h>
 
+volatile sig_atomic_t got_interrupt= 0;
+  // handle changes that occur outside the normal execution flow of a program
+  // it is volatile bcs the program can always get interrupt
+  volatile - used to tell compiler that the value of a variable can change anytime
+  sig_atomic_t - int type that is guaranteed atomic completed in single step
+  got_interrupt - a flag to indicate if there's signal coming and interrupt the running program
 
-Process disposition to a signal, what the process does to a signal.
-To find information about kernel, check section 7
+ssize_t write(int fildes, const void *buf, size_t nbyte);
+  // write nbyte bytes from the buffer pointer to by buf to the file fildes
+  // returns the number of bytes that weree actually written
+  #include <unistd.h>
 
-Some of the most important is 
-- SIGINT and SIGQUIT,
-- SIGKILL and SIGSTOP,
-- SIGTERM, 
-- SIGHUB, 
-- SIGCHILD, SIGTSTP, SIGCONT, for job control, to start and stop a process
-- SIGUSR1, SIGUSR2
+struct sigaction sigact - declares struct sigaction variable to specify how signals are handled
 
-To handle a signal
------------------------------------------------------------------------------
-void sighandler (int signum)  // signum can only have 1 digit
------------------------------------------------------------------------------
-The reason why signal handling is unreliable because it is like a mouse trap it catch one, but it mmihgt not catch another one.
-  That is why it is better to use SIGACTION
+struct sigaction {
+  void     (*sa_handler)(int);
+  void     (*sa_sigaction)(int, siginfo_t *, void *);
+  igset_t   sa_mask;
+  int        sa_flags;
+  void     (*sa_restorer)(void);
+};
 
-Even if a lot fo the code will have a printf(), it is not a static variable. It is use only for debugging and learning purpose, in reality, do not do printf when doing signal
+sigact.sa_handler = on_interrupt; // caught a signal
+sigemptyset(&sigact.sa_mask); // furthur signal that is same with the current handled signal will not be blocked until completion
+sigact.sa_flags = 0; // not using special signal handling which means syscalls won't start automatically
 
+int sigemptyset(sigset_t *set);
+  // initializes and empty a signal set
+  #include <signal.h>
 
-we can make our signal code handle codes diffferently by adding 
--D_XOPEN_SOURCE to the gcc line
-In Linux, by default it turn off mouse trap mode, but we can use semantics5 to turn it on,
-so instead of 
------------------------------------------------------------------------------
-signal(SIGINT, catch_signal)
------------------------------------------------------------------------------
-we do 
------------------------------------------------------------------------------
-sesv_signal(SIGINT, catch_signal)
------------------------------------------------------------------------------
+int sigaction(int sig, const struct sigaction *restrict act, struct sigaction *restrict oact);
+  // examine and change a signal action
+  #include <signal.h>
 
-The way to use kill is
------------------------------------------------------------------------------
-$ kill pid // have to know pid
-$ kill -i // kill all the process which it have permission to
-$ kill -s signal-val <pid> [<pid>] ...
------------------------------------------------------------------------------
+int tcflush(int fd, int queue_selector);
+  #include <termios.h>
+  #include <unistd.h>
+  int sig - specifies the signal number which action will be change
+  const struct sigaction *restrict act - pointer to a struct sigaction structure that defines the new action
+    Contains several fields:
+      - sa_handler or sa_sigaction: Specifies the handler function or action when the signal is received.
+      - sa_mask: A set of signals to be blocked during the execution of the signal handling function.
+      - sa_flags: Flags that modify the behavior of the signal handling; 
+          ex: SA_RESTART to make certain interrupted system calls restart automatically.
+  struct sigaction *restrict oact - OPTIONAL, If not null, sigaction() will save the previous action of specified signal sig in the oact
 
+usleep(3)
+int usleep(useconds_t usec);
+  /// suspends the execution of calling thread for 'usec' microseconds
+  #include <unistd.h>
 
+char *strsignal(int sig);
+  // return string describing signal
+  #include <string.h>
+
+typedef struct {
+	int si_signo;     // signal number being delivered, always set
+	int si_code;      // signal code, always set (system generated)
+	union sigval si_value;  // signal value
+	int si_errno;     // if non-zero, errno value associated w/ this signal
+	pid_t si_pid;     // pid of sending process
+	uid_t si_uid;     // real uid of sending process
+	void *si_addr;    // address at which fault occured
+	int si_status;    // exit value or signal for process termination
+	int si_band;      // band event for SIGPOLL/SIGIO
+} siginfo_t;
