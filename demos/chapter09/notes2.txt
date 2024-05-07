@@ -61,6 +61,7 @@ struct sigaction {
   void     (*sa_handler)(int);
   void     (*sa_sigaction)(int, siginfo_t *, void *);
   igset_t   sa_mask;
+		// some value include SA_NOCLDSTOP, SA_NOCLDWAIT, SA_NODEFER, SA_ONSTACK, SA_RESETHAND
   int        sa_flags;
   void     (*sa_restorer)(void);
 };
@@ -114,3 +115,43 @@ typedef struct {
 	int si_status;    // exit value or signal for process termination
 	int si_band;      // band event for SIGPOLL/SIGIO
 } siginfo_t;
+
+sigset_t
+  // a type representing a signal set, used by signal blocking functions to specify which signals are affected.
+  // because blocked signal has occured but is still pending, 
+  // sigset_t passed to sigpending containes the pending signals for the calling process
+
+const char *sigabbrev_np(int sig);
+  // returns abbreviated name of signal sig
+
+action.sa_sigaction = sig_handler;       /* SIGINT handler, to specify signal catching function  */
+action.sa_flags = SA_SIGINFO | flags;    /* Add the entered flags, to modifies behavior */
+sigemptyset(&blocked);                   /* Clear all bits of mask.   */
+action.sa_mask = blocked;                /* mask of signal to be blocked during execution of signal handler */
+  // In the sigaction structure, the sa_flags field can be used to modify the behavior of a specified signal. 
+  // When the SA_SIGINFO flag is set in the sa_flags field, the sa_sigaction field specifies a signal-catching function
+
+void* memset (void* ptr, int value, size_t num);
+  // sets sets the first 'num' bytes of the block of memory pointer by 'ptr' to the specified 'value'
+  void* ptr - pointer to the block of memory to fill
+  int value - value to be set
+  size_t num - num of bytes to send to value
+
+int sigaddset(sigset_t *set, int signo);
+  // add a signal to signal set, have to sigemptyset() or sigfillset() at least once prior to any other use of that object
+  #include <signal.h>
+  sigset_t *set - the set fo signal to be deleted from
+  int signo - signal number from the set
+
+int sigprocmask(int how, const sigset_t *_Nullable restrict set, sigset_t *_Nullable restrict oldset);
+  // examine and change the signal mask of the calling thread
+  #include <signal.h>
+  int how - how the signal mask should be changed, the value options are
+    SIG_BLOCK - signals specified in 'set' are added to the current signal mask
+    SIG_UNBLOCK - signals specified in 'set' are removed from the current signal mask
+    SIG_SETMASK - signals specified in 'set' becomes the new signal mask replacing the current mask
+  const sigset_t *_Nullable restrict set - set of signals to be updated
+  sigset_t *_Nullable restrict oldset - pointer to a sigset_t 
+    if its NULL, the previous value of the mask won't be stored 
+    if not NULL, signal mask is unchanged and 'how' is ignored
+
