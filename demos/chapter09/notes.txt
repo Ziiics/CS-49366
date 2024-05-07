@@ -202,4 +202,66 @@ Guidance on Designing Signal Handlers
 - It realtes to signal that is running on subsystem
 - Exception 
 
+Signals is send only by the signals. The driver will let the kernel knows and let the kernel runs it.
 
+Sources of signals:
+- User: asynchronous signals
+- Kernel: 
+- Hardware Exceptions:
+- Other Processes: as example, kill
+
+Signals born and dies. From POSIX statement, "a signal is said to be generated for a process or thread when the event that causes the signal first occurs."
+
+But, it suas that the signal is generated when the kernel sends it. And that is what we will use.
+The reason is because signlas have all this data structures which make a few changes, which is why wwe decided to use this meaning.
+
+Pending signal is when the sender process send a signal to another process which is not running. Meaning that the signal will not be done.
+Each process can only keep 1 pending signals which is the 1st one.
+
+Process id called delivered when either one occur:
+- the process explicitly ignores the signal.
+- the process executes a signal handler, when the process register a signal handler.
+  Signal handlers caught or catch signals
+- process accepts the default action associated with the signal.
+  some exmaple : terminate (most does this), ignore, stop, core dump.
+
+
+Process disposition to a signal, what the process does to a signal.
+To find information about kernel, check section 7
+
+Some of the most important is 
+- SIGINT and SIGQUIT,
+- SIGKILL and SIGSTOP,
+- SIGTERM, 
+- SIGHUB, 
+- SIGCHILD, SIGTSTP, SIGCONT, for job control, to start and stop a process
+- SIGUSR1, SIGUSR2
+
+To handle a signal
+-----------------------------------------------------------------------------
+void sighandler (int signum)  // signum can only have 1 digit
+-----------------------------------------------------------------------------
+The reason why signal handling is unreliable because it is like a mouse trap it catch one, but it mmihgt not catch another one.
+  That is why it is better to use SIGACTION
+
+Even if a lot fo the code will have a printf(), it is not a static variable. It is use only for debugging and learning purpose, in reality, do not do printf when doing signal
+
+
+we can make our signal code handle codes diffferently by adding 
+-D_XOPEN_SOURCE to the gcc line
+In Linux, by default it turn off mouse trap mode, but we can use semantics5 to turn it on,
+so instead of 
+-----------------------------------------------------------------------------
+signal(SIGINT, catch_signal)
+-----------------------------------------------------------------------------
+we do 
+-----------------------------------------------------------------------------
+sesv_signal(SIGINT, catch_signal)
+-----------------------------------------------------------------------------
+
+The way to use kill is
+-----------------------------------------------------------------------------
+$ kill pid // have to know pid
+$ kill -i // kill all the process which it have permission to
+$ kill -s signal-val <pid> [<pid>] ...
+-----------------------------------------------------------------------------
