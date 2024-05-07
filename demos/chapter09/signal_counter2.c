@@ -6,6 +6,18 @@
   Build with  : gcc -I../include -o signal_counter2 signal_counter2.c \
                      -L../lib -lspl
 *****************************************************************************/
+
+/*
+
+int sigaddset(sigset_t *set, int signo);
+  // add a signal to signal set, have to sigemptyset() or sigfillset() at least once prior to any other use of that object
+  #include <signal.h>
+  sigset_t *set - specification of the added signal 'signo'
+  int signo - 
+  
+
+*/
+
 #include  "common_hdrs.h"
 #include  <signal.h>
 
