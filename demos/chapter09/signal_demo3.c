@@ -7,6 +7,11 @@
 
 *****************************************************************************/
 
+/*
+static char* progname;
+  // to store the program name for potential use later in the program
+*/
+
 #include  "common_hdrs.h"
 #include  <signal.h>
 
