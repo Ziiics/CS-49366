@@ -18,7 +18,7 @@ int main()
 {
     int	i;
     printf("PID=%d\n", getpid());
-    for ( i = 1; i < NSIG; i++ )
+    for ( i = 1; i < NSIG; i++ )  // NSIG represents the total number of signals defined in the system, both standard and additional implementation-defined signals
         if ( SIG_ERR == signal( i,  all_signal_handler ))
             printf("Could not install handler for signal SIG%s, (%d)\n",
                    sigabbrev_np(i), i);
