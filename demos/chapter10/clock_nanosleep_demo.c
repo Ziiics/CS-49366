@@ -11,8 +11,8 @@
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp);
   // retrieve time fo the specified clock clk_id
-  clockid_t clk_id - represent the clock to obtian the time, can be from 
-  struct timespec *tp
+  clockid_t clk_id - represent the clock to obtian the time, can be from CLOCK_REALTIME, CLOCK_MONOTONIC, etc
+  struct timespec *tp - curent time will bestored upon success
 
 */
 
