@@ -1,0 +1,55 @@
+struct timespec {
+  time_t tv_sec; // seconds
+  /* ... */ tv_nsec; // nanoseconds
+} // #include <time.h> dsecribes times in seconds and nanoseconds
+
+unsigned int alarm(unsigned int seconds);
+  // arrages SIGALARM signla to be delivered to the calling process in 'seconds' seconds
+  // came as settimer(2)
+  #include <unistd.h>
+
+int nanosleep(const struct timespec *req, struct timespec *rem); 
+  // suspend the execution of the calling thread for an interval specified with nanosec
+  const struct timespec *req - a pointer to 'struct timespec' that specifies interval time of the thread should be suspended
+  struct timespec *rem - pointer to 'struct timespec' where any remaining time will be store when the call is interrupted by signal handler
+
+struct tm {
+    int tm_sec;    // Seconds (0-59)
+    int tm_min;    // Minutes (0-59)
+    int tm_hour;   // Hours (0-23)
+    int tm_mday;   // Day of the month (1-31)
+    int tm_mon;    // Month (0-11)
+    int tm_year;   // Year - 1900
+    int tm_wday;   // Day of the week (0-6, Sunday = 0)
+    int tm_yday;   // Day in the year (0-365, January 1st = 0)
+    int tm_isdst;  // Daylight Saving Time flag (positive if DST is in effect, 0 if not, negative if unknown)
+};
+
+time_t  // type of time, counting the time from when epoch start
+
+size_t strftime(char *s, size_t max, const char *format, const struct tm *tm);
+
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+  // retrieve time fo the specified clock clk_id
+  clockid_t clk_id - represent the clock to obtian the time, can be from CLOCK_REALTIME, CLOCK_MONOTONIC, etc
+  struct timespec *tp - curent time will bestored upon success
+  // format the time represneted by 'struct tm' into a string according to a specified format
+  #include <time.h>
+  char *s - pointer to char array where the formatted string will be stored
+  size_t max - max num of char to be written to 's', including it's null terminator
+  const char *format - format of the outputted string (as time), as %A, %d, etc
+  const struct tm *tm - pointer to 'struct tm' containing the time info to be formatted
+
+int sigfillset(sigset_t *set);  
+  // initializes set to full, to include all the signals (make it containes all the possible signals)
+
+struct tm *localtime(const time_t *timep);
+  // convert time represented by 'time_t' object into struct tm representing local time
+
+#define CLEAR_SCREEN "\033[2J" 
+  // define macro named 'CLEAR_SCREEN', using the sequence '\033[2J' which is recognnized by terminal emulators
+  // \033: ASCII escape character, represents the beginning of an escape sequence
+     [: opening bracket, marking the start of a control sequence.
+     2J: control sequence parameter that tells the terminal to clear the screen.
+
