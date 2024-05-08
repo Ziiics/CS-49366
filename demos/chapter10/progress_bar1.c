@@ -1,28 +1,25 @@
 /*****************************************************************************
-  Title          : progress_bar1.c
-  Author         : Stewart Weiss
-  Created on     : 1/23/2024
   Description/   : Displays a progress bar for a simulated computation
   Purpose        : To show how alarm() can be used as an interval timer
   Usage          : progress_bar1
   Build with     : gcc -Wall -g -I../include -L../lib -o progress_bar1 \
                    progress_bar1.c -lspl
-
-  Note:
-  This simulates a computation by updating a fraction_completed variable.
-  The progress bar will not display properly if the number of columns in the
-  terminal window is reduced and then increased.
-
-******************************************************************************
-* Copyright (C) 2023 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
+  Note           : This simulates a computation by updating a fraction_completed variable.
+  The progress bar will not display properly if the number of columns in the terminal window is reduced and then increased.
 *****************************************************************************/
+
+/*
+
+void *memset(void s[.n], int c, size_t n);
+  // fills the first 'n' bytes of memory area pointer to by 's' with the constant byte 'c'
+  #include <stirng.h>
+
+double drand48(void);
+  // return nonnegative double-precision floating-point values uniformly distributed over interval [0.0, 1.0]
+  
+*/
+
+
 #include "common_hdrs.h"
 #include <signal.h>
 
