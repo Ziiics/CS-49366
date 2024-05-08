@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title       : nanosleep_demo2.c
-  Author      : Stewart Weiss
-  Created on  : January 25, 2024
   Description : Acts like a call to sleep(), but with ns resolution
   Purpose     : Show how nanosleep() behaves
   Usage       : nanosleep_demo2[seconds]
@@ -10,15 +7,6 @@
                   nanosleep_demo2.c -lspl -lm
   Notes:
   This program also introduces clock_gettime().
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
 #include "common_hdrs.h"
 #include "time_utils.h"
