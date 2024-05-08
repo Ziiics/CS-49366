@@ -1,0 +1,177 @@
+-------------------------------- CHAPTER 09 ----------------------------------------------------------
+
+int get_int(char *arg, int flags, int *value, char *msg)
+  // process a string input 'arg' and attempt to convert it to an integer based on 'flags'
+  char* arg [IN] – input string to parse, provided by caller
+  int flags [IN] - specify how to handle anomalies during parsing (allowed condition of arg)
+  int* value [OUT] - pointer to an integer where the function will store the parsed number if successful
+  char* msg [OUT] - pointer to a character array where an error message will be stored if parsing fails
+
+int kill(pid_t pid, int sig);
+  // send any signal to any process group or process
+  #include <signal.h>
+  pid_t pid - target process identifier (PID) to be sent, based on the value below, signal will be send to:
+    > 0   : the process with the specified PID.
+    == 0  : all processes in the process group of the calling process.
+    < -1  : all processes in the process group whose ID is the absolute value of pid.
+    == -1 : all processes for which the calling process has permission to send signals, except for process 1 (init).
+  int sig - signal number to be sent, some common ones are:
+    SIGTERM (15): politely asking to terminate a process
+    SIGKILL (9): temrinate process immediately, CAN'T BE IGNORED
+    SIGSTOP (19): pause process, CAN'T BE IGNORED
+    SIGCONT (18): resume paused process
+    SIGALRM (15): timer signal from alarm()
+
+unsigned sleep(unsigned seconds);
+  // cause the calling thread to be suspended from execution until time elapsed
+  #include <unistd.h>
+
+int raise(int sig);
+  // sends signal 'sig' to the calling process or thread
+  #include <signal.h>
+
+sighandler_t signal(int signum, sighandler_t handler);
+  // sets the disposition of the signal signum to handler
+  // Avoid its use: use sigaction(2) instead
+  // The signals SIGKILL and SIGSTOP cannot be caught or ignored.
+  #include <signal.h>
+  int signum - the signal number to handle
+  sighandler_t handler - pointer to the signal handling function of the specified signal
+    SIG_IGN to ignore the signal.
+    SIG_DFL to reset the handling to its default behavior.
+
+usleep(3)
+int usleep(useconds_t usec);
+  /// suspends the execution of calling thread for 'usec' microseconds
+  #include <unistd.h>
+
+volatile sig_atomic_t got_interrupt= 0;
+  // handle changes that occur outside the normal execution flow of a program
+  // it is volatile bcs the program can always get interrupt
+  volatile - used to tell compiler that the value of a variable can change anytime
+  sig_atomic_t - int type that is guaranteed atomic completed in single step
+  got_interrupt - a flag to indicate if there's signal coming and interrupt the running program
+
+ssize_t write(int fildes, const void *buf, size_t nbyte);
+  // write nbyte bytes from the buffer pointer to by buf to the file fildes
+  // returns the number of bytes that weree actually written
+  #include <unistd.h>
+
+struct sigaction sigact - declares struct sigaction variable to specify how signals are handled
+
+struct sigaction {
+  void     (*sa_handler)(int);
+  void     (*sa_sigaction)(int, siginfo_t *, void *);
+  igset_t   sa_mask;
+		// some value include SA_NOCLDSTOP, SA_NOCLDWAIT, SA_NODEFER, SA_ONSTACK, SA_RESETHAND
+  int        sa_flags;
+  void     (*sa_restorer)(void);
+};
+
+sigact.sa_handler = on_interrupt; // caught a signal
+sigemptyset(&sigact.sa_mask); // furthur signal that is same with the current handled signal will not be blocked until completion
+sigact.sa_flags = 0; // not using special signal handling which means syscalls won't start automatically
+
+int sigemptyset(sigset_t *set);
+  // initializes and empty a signal set
+  #include <signal.h>
+
+int sigaction(int sig, const struct sigaction *restrict act, struct sigaction *restrict oact);
+  // examine and change a signal action
+  #include <signal.h>
+  int sig - specifies the signal number which action will be change
+  const struct sigaction *restrict act - pointer to a struct sigaction structure that defines the new action
+    Contains several fields:
+      - sa_handler or sa_sigaction: Specifies the handler function or action when the signal is received.
+      - sa_mask: A set of signals to be blocked during the execution of the signal handling function.
+      - sa_flags: Flags that modify the behavior of the signal handling; 
+          ex: SA_RESTART to make certain interrupted system calls restart automatically.
+  struct sigaction *restrict oact - OPTIONAL, If not null, sigaction() will save the previous action of specified signal sig in the oact
+
+int tcflush(int fildes, int queue_selector);
+  #include <termios.h>
+  #include <unistd.h>
+  fildes - file dscriptor of the device to flush
+  queue_selector - value that specifies which queue to flush, possible values:
+    TCIFLUSH - flushes input queue
+    TCOFLUSH - flushes output queue
+    TCIOFLUSH - flush both
+
+usleep(3)
+int usleep(useconds_t usec);
+  /// suspends the execution of calling thread for 'usec' microseconds
+  #include <unistd.h>
+
+char *strsignal(int sig);
+  // return string describing signal
+  #include <string.h>
+
+typedef struct {
+	int si_signo;     // signal number being delivered, always set
+	int si_code;      // signal code, always set (system generated)
+	union sigval si_value;  // signal value
+	int si_errno;     // if non-zero, errno value associated w/ this signal
+	pid_t si_pid;     // pid of sending process
+	uid_t si_uid;     // real uid of sending process
+	void *si_addr;    // address at which fault occured
+	int si_status;    // exit value or signal for process termination
+	int si_band;      // band event for SIGPOLL/SIGIO
+} siginfo_t;
+
+sigset_t
+  // a type representing a signal set, used by signal blocking functions to specify which signals are affected.
+  // because blocked signal has occured but is still pending, 
+  // sigset_t passed to sigpending containes the pending signals for the calling process
+
+const char *sigabbrev_np(int sig);
+  // returns abbreviated name of signal sig
+
+action.sa_sigaction = sig_handler;       /* SIGINT handler, to specify signal catching function  */
+action.sa_flags = SA_SIGINFO | flags;    /* Add the entered flags, to modifies behavior */
+sigemptyset(&blocked);                   /* Clear all bits of mask.   */
+action.sa_mask = blocked;                /* mask of signal to be blocked during execution of signal handler */
+  // In the sigaction structure, the sa_flags field can be used to modify the behavior of a specified signal. 
+  // When the SA_SIGINFO flag is set in the sa_flags field, the sa_sigaction field specifies a signal-catching function
+
+void* memset (void* ptr, int value, size_t num);
+  // sets sets the first 'num' bytes of the block of memory pointer by 'ptr' to the specified 'value'
+  void* ptr - pointer to the block of memory to fill
+  int value - value to be set
+  size_t num - num of bytes to send to value
+
+int sigaddset(sigset_t *set, int signo);
+  // add a signal to signal set, have to sigemptyset() or sigfillset() at least once prior to any other use of that object
+  #include <signal.h>
+  sigset_t *set - the set fo signal to be deleted from
+  int signo - signal number from the set
+
+int sigprocmask(int how, const sigset_t *_Nullable restrict set, sigset_t *_Nullable restrict oldset);
+  // examine and change the signal mask of the calling thread
+  #include <signal.h>
+  int how - how the signal mask should be changed, the value options are
+    SIG_BLOCK - signals specified in 'set' are added to the current signal mask
+    SIG_UNBLOCK - signals specified in 'set' are removed from the current signal mask
+    SIG_SETMASK - signals specified in 'set' becomes the new signal mask replacing the current mask
+  const sigset_t *_Nullable restrict set - set of signals to be updated
+  sigset_t *_Nullable restrict oldset - pointer to a sigset_t 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------------------- CHAPTER 10 ----------------------------------------------------------
+    if its NULL, the previous value of the mask won't be stored 
+    if not NULL, signal mask is unchanged and 'how' is ignored
