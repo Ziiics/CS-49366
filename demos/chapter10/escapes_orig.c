@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title          : escapeseq_demo.c
-  Author         : Stewart Weiss
-  Created on     : January  2, 2023
   Description    : Demonstrates use of ANSI escape sequences
   Purpose        : To show the effects of various ANSI escape sequences
   Usage          : vt100ctrl
@@ -16,17 +13,6 @@
   decimal code 27, or octal 033, which we will write as ESC. Many codes
   begin with a two-character sequence consisting of ESC followed by '[',
   although there are also escape sequences that use just the ESC.
-
-
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
 
 #define _GNU_SOURCE
