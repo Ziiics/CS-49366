@@ -1,32 +1,16 @@
 /******************************************************************************
-  Title          : escapes.c
-  Author         : Stewart Weiss
-  Created on     : January  2, 2011
   Description    : Demonstrates use of ANSI escape sequences
   Purpose        : To show the effects of various ANSI escape sequences
   Usage          : vt100ctrl
   Build with     : gcc -o escapes escapes.c
   Modifications  : January 23, 2012
                    Comments revised and a few extra sequences added.
-
-  Notes          :
-  This program lets the user see the effects of various escape sequences and
-  how they can be used. The choice of escapes shown here is pretty random.
-
+  Notes          : This program lets the user see the effects of various escape sequences and
+                   how they can be used. The choice of escapes shown here is pretty random.
   Every ANSI escape sequence begins with the character whose code is
   decimal code 27, or octal 033, which we will write as ESC. Many codes
   begin with a two-character sequence consisting of ESC followed by '[',
   although there are also escape sequences that use just the ESC.
-
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
 
 #define _GNU_SOURCE
