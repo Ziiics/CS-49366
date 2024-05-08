@@ -1,13 +1,9 @@
 /*****************************************************************************
-  Title          : escapeseq_demo.c
-  Author         : Stewart Weiss
-  Created on     : January  2, 2023
   Description    : Demonstrates use of ANSI escape sequences
   Purpose        : To show the effects of various ANSI escape sequences
   Usage          : vt100ctrl
   Build with     : gcc -Wall -g  -L../lib  -I../include -o escapeseq_demo \
                    escapeseq_demo.c  -lspl
-
   Notes          :
   This program lets the user see the effects of various escape sequences and
   how they can be used. The choice of escapes shown here is pretty random.
@@ -16,18 +12,31 @@
   decimal code 27, or octal 033, which we will write as ESC. Many codes
   begin with a two-character sequence consisting of ESC followed by '[',
   although there are also escape sequences that use just the ESC.
-
-
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+FILE *fopen(const char *restrict pathname, const char *restrict mode);
+  // opens the file whose name is the string pointer to by 'pathname' and associates a stream with it
+  // return pointer to the file which can be used to access, NULL if not
+  const char *restrict pathname - specified the pathname, can be absolute or relative
+  const char *restrict mode - how the file is accessed (r[open] w[write] a[appending] etc...)
+
+int isatty(int fd);
+  // test if a file descriptor refers to a terminal
+  #include <unistd.h>
+
+void* calloc( size_t num, size_t size );
+  // allocate memory for an array of 'num' object of 'size' and initializes all bytes in the allocated storage to zero
+
+int fgetc(FILE *stream);
+  // gets the next char from the specified stream and advances the position indicator for the stream
+  // if return is EOF, means that an error or end of file
+  
+void free(void *ptr);
+  // deallocated the memory previously allocated by a call to calloc, malloc, realloc
+  
+*/
 
 #define _GNU_SOURCE
 #include "common_hdrs.h"
