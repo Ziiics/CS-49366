@@ -1,24 +1,20 @@
 /*****************************************************************************
-  Title       : nanosleep_demo3.c
-  Author      : Stewart Weiss
-  Created on  : January 25, 2024
   Description : Display a blinking shape during process sleep
   Purpose     : Shows one way to create flashing cursor
   Usage       : nanosleep_demo3 [seconds]
                    If seconds is not supplied, the default is 5 seconds
   Build with  : gcc -Wall -g -I../include -L../lib -o nanosleep_demo3  \
                   nanosleep_demo3.c -lspl
-
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+int fflush(FILE *_Nullable stream);
+  // to flush a stream 'stream'
+  #include <stdio.h>
+  
+*/
+
 #include "common_hdrs.h"
 
 #define NSECS  250000000L    /* 250,000,000 nsecs = 1/4 second */
