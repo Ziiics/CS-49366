@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title       : alarm_demo3.c
-  Author      : Stewart Weiss
-  Created on  : December 19, 2023
   Description : Calls alarm, pause using the sigaction() to install handler
   Purpose     :
   Usage       : alarmdemo3  <numseconds>
@@ -9,17 +6,27 @@
                        set the alarm
   Build with  : gcc -Wall -g -I../include -L../lib -o alarm_demo3  \
                   alarm_demo3.c -lspl
-
-******************************************************************************
-* Copyright (C) 2023 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+size_t strftime(char *s, size_t max, const char *format, const struct tm *tm);
+  // format the time represneted by 'struct tm' into a string according to a specified format
+  #include <time.h>
+  char *s - pointer to char array where the formatted string will be stored
+  size_t max - max num of char to be written to 's', including it's null terminator
+  const char *format - format of the outputted string (as time), as %A, %d, etc
+  const struct tm *tm - pointer to 'struct tm' containing the time info to be formatted
+
+int sigfillset(sigset_t *set);  
+  // initializes set to full, to include all the signals (make it containes all the possible signals)
+
+struct tm *localtime(const time_t *timep);
+  // convert time represented by 'time_t' object into struct tm representing local time
+
+*/
+
+
 #include "common_hdrs.h"
 #include <signal.h>
 
@@ -68,6 +75,6 @@ int main(int argc, char * argv[])
                      "Conversion to a date-time string failed\n");
     printf( "%s. About to set an alarm for %d seconds.\n", timestr, k);
     alarm(k);
-    pause();
+    pause();  // suspend the execution of the program until signal is received, wiaitng for SIGALARM
     return 0;
 }
