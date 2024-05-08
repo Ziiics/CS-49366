@@ -54,8 +54,8 @@ struct tm *localtime(const time_t *timep);
      2J: control sequence parameter that tells the terminal to clear the screen.
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp);
-  // retrieve time fo the specified clock clk_id
-  clockid_t clk_id - represent the clock to obtian the time, can be from CLOCK_REALTIME, CLOCK_MONOTONIC, etc
+  // retrieve time for the specified clock clk_id
+  clockid_t clk_id - represent the clock to obtain the time, can be from CLOCK_REALTIME, CLOCK_MONOTONIC, etc
   struct timespec *tp - curent time will bestored upon success
 
 #define CLEAR_LINE      "\033[1A\033[2K\033[G"
@@ -106,4 +106,40 @@ int fgetc(FILE *stream);
   
 void free(void *ptr);
   // deallocated the memory previously allocated by a call to calloc, malloc, realloc
+
+int fflush(FILE *_Nullable stream);
+  // to flush a stream 'stream'
+  #include <stdio.h>
+
+struct sigevent {
+    int    sigev_notify;  /* Notification method */
+                     value can be SIGEV_NONE (do nothing), 
+                                  SIGEV_SIGNAL (notify by sending the signal specified in sigev_signo)
+                                  SIGEV_THREAD or SIGEV_THREAD_ID (by invoking sigev_notify_function)
+    int    sigev_signo;   /* Notification signal */
+    union sigval sigev_value; /* Data passed with notification */
+    void (*sigev_notify_function)(union sigval);  /* Function used for thread notification (SIGEV_THREAD) */
+    void  *sigev_notify_attributes;  /* Attributes for notification thread SIGEV_THREAD) */
+    pid_t  sigev_notify_thread_id;  /* ID of thread to signal (SIGEV_THREAD_ID); Linux-specific */
+};
+
+struct itimerspec {
+    struct timespec  it_interval;  /* Interval for periodic timer */
+    struct timespec  it_value;     /* Initial expiration */
+};
+
+int timer_settime(timer_t timerid, int flags, const struct itimerspec *restrict new_value, struct itimerspec *_Nullable restrict old_value);
+  // arms or disarms the timer identified by 'timerid'
+  timer_t timerid - timer identifier
+  int flags - can be set to 0 ('new_value' is relative time) or TIMER_ABSTIME ('new_velue' is absolute time)
+  const struct itimerspec *restrict new_value - new initial value and interval for the timer
+  struct itimerspec *_Nullable restrict old_value - if non-NULL, its a pointer to a struct itimerspec struct which 
+                stores the prev setting of the timer upon successful completion)
+
+void *memset(void s[.n], int c, size_t n);
+  // fills the first 'n' bytes of memory area pointer to by 's' with the constant byte 'c'
+  #include <stirng.h>
+
+double drand48(void);
+  // return nonnegative double-precision floating-point values uniformly distributed over interval [0.0, 1.0]
 
