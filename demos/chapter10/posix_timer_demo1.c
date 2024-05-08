@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title       : posix_timer_demo1.c
-  Author      : Stewart Weiss
-  Created on  : December 19, 2023
   Description : Sleep for real-valued number of seconds
   Purpose     : Show how nanosleep() behaves
   Usage       : nanosleep_demo [seconds]
@@ -12,23 +9,44 @@
   Notes:
   After starting the program, enter CTRL-C. The program will display
   how much time was left in the call to nanosleep().
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+struct sigevent {
+    int    sigev_notify;  /* Notification method */
+                     value can be SIGEV_NONE (do nothing), 
+                                  SIGEV_SIGNAL (notify by sending the signal specified in sigev_signo)
+                                  SIGEV_THREAD or SIGEV_THREAD_ID (by invoking sigev_notify_function)
+    int    sigev_signo;   /* Notification signal */
+    union sigval sigev_value; /* Data passed with notification */
+    void (*sigev_notify_function)(union sigval);  /* Function used for thread notification (SIGEV_THREAD) */
+    void  *sigev_notify_attributes;  /* Attributes for notification thread SIGEV_THREAD) */
+    pid_t  sigev_notify_thread_id;  /* ID of thread to signal (SIGEV_THREAD_ID); Linux-specific */
+};
+
+struct itimerspec {
+    struct timespec  it_interval;  /* Interval for periodic timer */
+    struct timespec  it_value;     /* Initial expiration */
+};
+
+int timer_settime(timer_t timerid, int flags, const struct itimerspec *restrict new_value, struct itimerspec *_Nullable restrict old_value);
+  // arms or disarms the timer identified by 'timerid'
+  timer_t timerid - timer identifier
+  int flags - can be set to 0 ('new_value' is relative time) or TIMER_ABSTIME ('new_velue' is absolute time)
+  const struct itimerspec *restrict new_value - new initial value and interval for the timer
+  struct itimerspec *_Nullable restrict old_value - if non-NULL, its a pointer to a struct itimerspec struct which 
+                stores the prev setting of the timer upon successful completion)
+
+    
+*/
 
 #include "common_hdrs.h"
 #include <stdint.h>
 #include "time_utils.h"
 
 #define CLOCKID CLOCK_MONOTONIC
-#define NUMTIMERS 8
+#define NUMTIMERS 8    // number of timers
 
 char* idstr[] =
     {" 2", " 3", " 5", " 7", " 11", " 13", " 17 ", " 19 "};
@@ -53,7 +71,7 @@ int  main(int argc, char *argv[])
     const double  BASE_UNIT = 0.4; /* Seconds */
     int interval[NUMTIMERS] = {2, 3, 5, 7, 11, 13, 17, 19};
 
-
+    // counting how many left
     if ( SIGRTMIN+NUMTIMERS > SIGRTMAX )
         numtimers = SIGRTMAX - SIGRTMIN;
 
