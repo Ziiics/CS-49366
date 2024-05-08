@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title       : alarm_demo2.c
-  Author      : Stewart Weiss
-  Created on  : December 19, 2023
   Description : Put process to sleep for specified period.
   Purpose     : Show how alarm() behaves
   Usage       : alarm_demo2 [seconds]
@@ -9,17 +6,26 @@
 
   Build with  : gcc -Wall -g -I../include -L../lib -o alarm_demo2  \
                   alarm_demo2.c -lspl
-
-******************************************************************************
-* Copyright (C) 2023 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+struct timespec {
+  time_t tv_sec; // seconds
+  /* ... */ tv_nsec; // nanoseconds
+} // #include <time.h> dsecribes times in seconds and nanoseconds
+
+unsigned int alarm(unsigned int seconds);
+  // arrages SIGALARM signla to be delivered to the calling process in 'seconds' seconds
+  // came as settimer(2)
+  #include <unistd.h>
+
+int nanosleep(const struct timespec *req, struct timespec *rem); 
+  // suspend the execution of the calling thread for an interval specified with nanosec
+  const struct timespec *req - a pointer to 'struct timespec' that specifies interval time of the thread should be suspended
+  struct timespec *rem - pointer to 'struct timespec' where any remaining time will be store when the call is interrupted by signal handler
+*/
+
 #include "common_hdrs.h"
 #include <signal.h>
 
@@ -42,7 +48,7 @@ int main(int argc, char* argv[])
     struct sigaction act;
 
     if ( argc >= 2) {
-        retval = get_int(argv[1], NON_NEG_ONLY|PURE, &delay, NULL );
+        retval = get_int(argv[1], NON_NEG_ONLY|PURE, &delay, NULL );  // convert comment line into integer
         if ( retval < 0 || delay < 1 )
             fatal_error(retval, "get_int expects a positive integer");
     }
