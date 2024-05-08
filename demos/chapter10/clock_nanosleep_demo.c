@@ -1,24 +1,21 @@
 /*****************************************************************************
-  Title       : clock_nanosleep_demo.c
-  Author      : Stewart Weiss
-  Created on  : January 25, 2024
   Description : Acts like a call to sleep(), but with ns resolution
   Purpose     : Show how clock_nanosleep_demo() behaves
   Usage       : clock_nanosleep_demo[seconds]
                    If seconds is not supplied, the default is 5 seconds
   Build with  : gcc -Wall -g -I../include -L../lib -o clock_nanosleep_demo  \
                   clock_nanosleep_demo.c -lspl -lm
-
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+/*
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+  // retrieve time fo the specified clock clk_id
+  clockid_t clk_id - represent the clock to obtian the time, can be from 
+  struct timespec *tp
+
+*/
+
 #include "common_hdrs.h"
 #include "time_utils.h"
 
