@@ -108,14 +108,14 @@ void free(void *ptr);
   // deallocated the memory previously allocated by a call to calloc, malloc, realloc
 
 int fflush(FILE *_Nullable stream);
-  // to flush a stream 'stream'
+  // to flush a stream 'stream', the idea where it flush the content right away instead of waiting for the end of the program
   #include <stdio.h>
 
 struct sigevent {
     int    sigev_notify;  /* Notification method */
-                     value can be SIGEV_NONE (do nothing), 
-                                  SIGEV_SIGNAL (notify by sending the signal specified in sigev_signo)
-                                  SIGEV_THREAD or SIGEV_THREAD_ID (by invoking sigev_notify_function)
+                value can be SIGEV_NONE (do nothing), 
+                             SIGEV_SIGNAL (notify by sending the signal specified in sigev_signo)
+                             SIGEV_THREAD or SIGEV_THREAD_ID (by invoking sigev_notify_function)
     int    sigev_signo;   /* Notification signal */
     union sigval sigev_value; /* Data passed with notification */
     void (*sigev_notify_function)(union sigval);  /* Function used for thread notification (SIGEV_THREAD) */
@@ -142,4 +142,19 @@ void *memset(void s[.n], int c, size_t n);
 
 double drand48(void);
   // return nonnegative double-precision floating-point values uniformly distributed over interval [0.0, 1.0]
+
+struct winsize {
+  unsigned short ws_row;	/* rows, in characters */
+  unsigned short ws_col;	/* columns, in characters */
+  unsigned short ws_xpixel;	/* horizontal size, pixels */
+  unsigned short ws_ypixel;	/* vertical size, pixels */
+};
+  #include <sys/ioctl.h>
+  // int ioctl(int fd, int cmd, ... );
+
+int ioctl(int fd, unsigned long request, ...);
+  // manipulates the underlying device parameters of special files
+  int fd - file descriptor that represents an open file, socket, or other devices that supports device-specific I/O operations
+  unsigned long request - device-dependent request code that determine the behavior of 'ioctl()'
+  ... (varags) - optional arguments whose type and number depend on the 'request' code
 
