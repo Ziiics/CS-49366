@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title          : escapes.c
-  Author         : Stewart Weiss
-  Created on     : January  2, 2011
   Description    : Demonstrates use of ANSI escape sequences
   Purpose        : To show the effects of various ANSI escape sequences
   Usage          : vt100ctrl
@@ -17,16 +14,6 @@
   decimal code 27, or octal 033, which we will write as ESC. Many codes
   begin with a two-character sequence consisting of ESC followed by '[',
   although there are also escape sequences that use just the ESC.
-
-******************************************************************************
-* Copyright (C) 2024 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
 
 #define _GNU_SOURCE
@@ -79,16 +66,25 @@ int main (int argc, char *argv[])
         exit(EXIT_FAILURE);
 
     // Clear the screen.
+    // setting up terminal screen
     sprintf(line,  "%s%s", CLEAR_SCREEN,CURSOR_HOME);
     write(1,line, strlen(line));
+
+    // positioning the cursor and printing a character
     sprintf( line, "\033[1;10H +");
     write(1,line, strlen(line));
+
+    // draw plus signs at increasing positions
     for ( i = 4; i< 20; i+= 4) {
         sprintf(line, "\033[%d;%dH+", i, i);
         write(1,line, strlen(line));
     }
+
+    // furthur cursor movement and printing
     sprintf(line, "\033[30E +");
     write(1,line, strlen(line));
+
+    // memory clean up
     free(line);
     return (0);
 }
