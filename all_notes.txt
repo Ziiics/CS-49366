@@ -173,5 +173,163 @@ int sigprocmask(int how, const sigset_t *_Nullable restrict set, sigset_t *_Null
 
 
 -------------------------------- CHAPTER 10 ----------------------------------------------------------
-    if its NULL, the previous value of the mask won't be stored 
-    if not NULL, signal mask is unchanged and 'how' is ignored
+
+struct timespec {
+  time_t tv_sec; // seconds
+  /* ... */ tv_nsec; // nanoseconds
+} // #include <time.h> dsecribes times in seconds and nanoseconds
+
+unsigned int alarm(unsigned int seconds);
+  // arrages SIGALARM signla to be delivered to the calling process in 'seconds' seconds
+  // came as settimer(2)
+  #include <unistd.h>
+
+int nanosleep(const struct timespec *req, struct timespec *rem); 
+  // suspend the execution of the calling thread for an interval specified with nanosec
+  const struct timespec *req - a pointer to 'struct timespec' that specifies interval time of the thread should be suspended
+  struct timespec *rem - pointer to 'struct timespec' where any remaining time will be store when the call is interrupted by signal handler
+
+struct tm {
+    int tm_sec;    // Seconds (0-59)
+    int tm_min;    // Minutes (0-59)
+    int tm_hour;   // Hours (0-23)
+    int tm_mday;   // Day of the month (1-31)
+    int tm_mon;    // Month (0-11)
+    int tm_year;   // Year - 1900
+    int tm_wday;   // Day of the week (0-6, Sunday = 0)
+    int tm_yday;   // Day in the year (0-365, January 1st = 0)
+    int tm_isdst;  // Daylight Saving Time flag (positive if DST is in effect, 0 if not, negative if unknown)
+};
+
+time_t  // type of time, counting the time from when epoch start
+
+size_t strftime(char *s, size_t max, const char *format, const struct tm *tm);
+
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+  // retrieve time fo the specified clock clk_id
+  clockid_t clk_id - represent the clock to obtian the time, can be from CLOCK_REALTIME, CLOCK_MONOTONIC, etc
+  struct timespec *tp - curent time will bestored upon success
+  // format the time represneted by 'struct tm' into a string according to a specified format
+  #include <time.h>
+  char *s - pointer to char array where the formatted string will be stored
+  size_t max - max num of char to be written to 's', including it's null terminator
+  const char *format - format of the outputted string (as time), as %A, %d, etc
+  const struct tm *tm - pointer to 'struct tm' containing the time info to be formatted
+
+int sigfillset(sigset_t *set);  
+  // initializes set to full, to include all the signals (make it containes all the possible signals)
+
+struct tm *localtime(const time_t *timep);
+  // convert time represented by 'time_t' object into struct tm representing local time
+
+#define CLEAR_SCREEN "\033[2J" 
+  // define macro named 'CLEAR_SCREEN', using the sequence '\033[2J' which is recognnized by terminal emulators
+  // \033: ASCII escape character, represents the beginning of an escape sequence
+     [: opening bracket, marking the start of a control sequence.
+     2J: control sequence parameter that tells the terminal to clear the screen.
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+  // retrieve time for the specified clock clk_id
+  clockid_t clk_id - represent the clock to obtain the time, can be from CLOCK_REALTIME, CLOCK_MONOTONIC, etc
+  struct timespec *tp - curent time will bestored upon success
+
+#define CLEAR_LINE      "\033[1A\033[2K\033[G"
+#define CLEAR_SCREEN    "\033[2J"
+#define CLEAR_ABOVE     "\033[1J"
+#define CLEAR_DOWN      "\033[0J"
+#define INVERSE_START    "\033[7m"
+#define INVERSE_END     "\033[27m"
+#define PROMPT            "prompt: "
+#define CURSOR_HOME     "\033[1;1H"
+#define CURSOR_PARK     "\033[24;80H"
+#define CURSOR_UP_2     "\033[2A"
+#define CURSOR_DOWN_2   "\033[4B"
+#define SCROLL_WINDOW   "\033M"
+
+void display_menu(FILE* fp)
+{
+    char * menu =
+"v  displays a prompt in reverse video         p displays prompt in normal video\n"
+"h  homes the cursor (at upper left)         b moves cursor to lower right\n"
+"c  clears entire screen                     l clears lines containing cursor\n"
+"z  clears from cursor to bottom of screen   u clears screen above the cursor\n"
+"+  moves cursor up 1 line                   s moves cursor up 20 lines, \n"
+"                                              scrolling if necessary\n"
+"?  displays this menu                       q quits\n";
+    fprintf(fp, "%s", menu);
+}
+
+
+
+
+FILE *fopen(const char *restrict pathname, const char *restrict mode);
+  // opens the file whose name is the string pointer to by 'pathname' and associates a stream with it
+  // return pointer to the file which can be used to access, NULL if not
+  const char *restrict pathname - specified the pathname, can be absolute or relative
+  const char *restrict mode - how the file is accessed (r[open] w[write] a[appending] etc...)
+
+int isatty(int fd);
+  // test if a file descriptor refers to a terminal
+  #include <unistd.h>
+
+void* calloc( size_t num, size_t size );
+  // allocate memory for an array of 'num' object of 'size' and initializes all bytes in the allocated storage to zero
+
+int fgetc(FILE *stream);
+  // gets the next char from the specified stream and advances the position indicator for the stream
+  // if return is EOF, means that an error or end of file
+  
+void free(void *ptr);
+  // deallocated the memory previously allocated by a call to calloc, malloc, realloc
+
+int fflush(FILE *_Nullable stream);
+  // to flush a stream 'stream', the idea where it flush the content right away instead of waiting for the end of the program
+  #include <stdio.h>
+
+struct sigevent {
+    int    sigev_notify;  /* Notification method */
+                value can be SIGEV_NONE (do nothing), 
+                             SIGEV_SIGNAL (notify by sending the signal specified in sigev_signo)
+                             SIGEV_THREAD or SIGEV_THREAD_ID (by invoking sigev_notify_function)
+    int    sigev_signo;   /* Notification signal */
+    union sigval sigev_value; /* Data passed with notification */
+    void (*sigev_notify_function)(union sigval);  /* Function used for thread notification (SIGEV_THREAD) */
+    void  *sigev_notify_attributes;  /* Attributes for notification thread SIGEV_THREAD) */
+    pid_t  sigev_notify_thread_id;  /* ID of thread to signal (SIGEV_THREAD_ID); Linux-specific */
+};
+
+struct itimerspec {
+    struct timespec  it_interval;  /* Interval for periodic timer */
+    struct timespec  it_value;     /* Initial expiration */
+};
+
+int timer_settime(timer_t timerid, int flags, const struct itimerspec *restrict new_value, struct itimerspec *_Nullable restrict old_value);
+  // arms or disarms the timer identified by 'timerid'
+  timer_t timerid - timer identifier
+  int flags - can be set to 0 ('new_value' is relative time) or TIMER_ABSTIME ('new_velue' is absolute time)
+  const struct itimerspec *restrict new_value - new initial value and interval for the timer
+  struct itimerspec *_Nullable restrict old_value - if non-NULL, its a pointer to a struct itimerspec struct which 
+                stores the prev setting of the timer upon successful completion)
+
+void *memset(void s[.n], int c, size_t n);
+  // fills the first 'n' bytes of memory area pointer to by 's' with the constant byte 'c'
+  #include <stirng.h>
+
+double drand48(void);
+  // return nonnegative double-precision floating-point values uniformly distributed over interval [0.0, 1.0]
+
+struct winsize {
+  unsigned short ws_row;	/* rows, in characters */
+  unsigned short ws_col;	/* columns, in characters */
+  unsigned short ws_xpixel;	/* horizontal size, pixels */
+  unsigned short ws_ypixel;	/* vertical size, pixels */
+};
+  #include <sys/ioctl.h>
+  // int ioctl(int fd, int cmd, ... );
+
+int ioctl(int fd, unsigned long request, ...);
+  // manipulates the underlying device parameters of special files
+  int fd - file descriptor that represents an open file, socket, or other devices that supports device-specific I/O operations
+  unsigned long request - device-dependent request code that determine the behavior of 'ioctl()'
+  ... (varags) - optional arguments whose type and number depend on the 'request' code
