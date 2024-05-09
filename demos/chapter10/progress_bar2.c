@@ -1,7 +1,4 @@
 /*****************************************************************************
-  Title          : progress_bar2.c
-  Author         : Stewart Weiss
-  Created on     : 1/23/2024
   Description/   : Displays a progress bar for a simulated computation
   Purpose        : To show how a POSIX timer can be used as an interval timer
   Usage          : progress_bar2
@@ -12,17 +9,9 @@
   This simulates a computation by updating a fraction_completed variable.
   The progress bar will not display properly if the number of columns in the
   terminal window is reduced and then increased.
-
-******************************************************************************
-* Copyright (C) 2023 - Stewart Weiss                                         *
-*                                                                            *
-* This code is free software; you can use, modify, and redistribute it       *
-* under the terms of the GNU General Public License as published by the      *
-* Free Software Foundation; either version 3 of the License, or (at your     *
-* option) any later version. This code is distributed WITHOUT ANY WARRANTY;  *
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
-* PARTICULAR PURPOSE. See the file COPYING.gplv3 for details.                *
 *****************************************************************************/
+
+
 #include "common_hdrs.h"
 #include <signal.h>
 #include "time_utils.h"
