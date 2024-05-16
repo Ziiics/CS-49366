@@ -10,10 +10,10 @@
 TIOSCGWINSZ - a macro used with 'ioctl' to get te window size of the terminal
 
 struct winsize {
-  unsigned short ws_row;	/* rows, in characters */
-  unsigned short ws_col;	/* columns, in characters */
-  unsigned short ws_xpixel;	/* horizontal size, pixels */
-  unsigned short ws_ypixel;	/* vertical size, pixels */
+  unsigned short ws_row;	// rows, in characters 
+  unsigned short ws_col;	// columns, in characters 
+  unsigned short ws_xpixel;	// horizontal size, pixels 
+  unsigned short ws_ypixel;	// vertical size, pixels 
 };
   #include <sys/ioctl.h>
   // int ioctl(int fd, int cmd, ... );

@@ -333,3 +333,41 @@ int ioctl(int fd, unsigned long request, ...);
   int fd - file descriptor that represents an open file, socket, or other devices that supports device-specific I/O operations
   unsigned long request - device-dependent request code that determine the behavior of 'ioctl()'
   ... (varags) - optional arguments whose type and number depend on the 'request' code
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dyanmic Linking file: when we open the process, it will not goes directly to the program and start it. 
+What actually runs first is the dynamic linker. 
+The dynamic linker is used to access the memory and gets all the data to run the progress, also called interpreter
+
+A program is made by another program. Whenever the computer is on, the first program that will run is init, which is now called systemd.
+
+When a process is created it calls fork process, and what is does is to fork the parents. But remember that if the parent id is termianted, ti doesnt mean that the child is also terminated.
+
+When you are putting command or execute signal handler to the controlling terminal, the signal will lbe sent to all,
+that is why on server, we need them to be server terminal so it is not attached to any controller and be immune to the signal sent to other terminal.
